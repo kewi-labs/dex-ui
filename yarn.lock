@@ -4494,10 +4494,10 @@
     tiny-invariant "^1.1.0"
     toformat "^2.0.0"
 
-"@uniswap/token-lists@^1.0.0-beta.19":
-  version "1.0.0-beta.21"
-  resolved "https://registry.yarnpkg.com/@uniswap/token-lists/-/token-lists-1.0.0-beta.21.tgz#5a4844236e328d3b0e87161c19edaace669e3e6e"
-  integrity sha512-IQ1YpWKgXIsfYqym9Nl/uaB1t5Wk70pyqJ2W4FmvQmt3FIQz+pHlzlEl91aYloPrlcZaFluE0Jq7gkfYpIjsBw==
+"@uniswap/token-lists@^1.0.0-beta.35":
+  version "1.0.0-beta.35"
+  resolved "https://registry.yarnpkg.com/@uniswap/token-lists/-/token-lists-1.0.0-beta.35.tgz#4b5f39292a1acd9caff31f3c92bd9e065ec8c022"
+  integrity sha512-v43brw8Fx+D904fOCXL5kTU75cIPH40U/WTKB96K1gxOibk2jVsxW3AULBE5Buj5dJpeVwj/l6TNgB6QPw7lJg==
 
 "@uniswap/v2-core@1.0.0":
   version "1.0.0"
