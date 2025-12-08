@@ -1,5 +1,4 @@
 import { BigNumber } from '@ethersproject/bignumber'
-
 import { calculateGasMargin } from './calculateGasMargin'
 
 describe('#calculateGasMargin', () => {

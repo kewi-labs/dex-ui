@@ -1,56 +1,55 @@
-import { getVersionUpgrade, VersionUpgrade } from '@uniswap/token-lists'
-import { useWeb3React } from '@web3-react/core'
-import { DEFAULT_LIST_OF_LISTS } from 'constants/lists'
-import TokenSafetyLookupTable from 'constants/tokenSafetyLookup'
-import { useStateRehydrated } from 'hooks/useStateRehydrated'
-import useInterval from 'lib/hooks/useInterval'
-import ms from 'ms'
-import { useCallback, useEffect } from 'react'
-import { useAppDispatch, useAppSelector } from 'state/hooks'
 import { useAllLists } from 'state/lists/hooks'
-
+import { getVersionUpgrade, minVersionBump, VersionUpgrade } from '@uniswap/token-lists'
+import { useCallback, useEffect } from 'react'
+import { useDispatch } from 'react-redux'
+import { useActiveWeb3React } from '../../hooks/web3'
 import { useFetchListCallback } from '../../hooks/useFetchListCallback'
+import useInterval from '../../hooks/useInterval'
 import useIsWindowVisible from '../../hooks/useIsWindowVisible'
+import { AppDispatch } from '../index'
 import { acceptListUpdate } from './actions'
-import { shouldAcceptVersionUpdate } from './utils'
+import { useActiveListUrls } from './hooks'
+import { UNSUPPORTED_LIST_URLS } from 'constants/lists'
 
 export default function Updater(): null {
-  const { provider } = useWeb3React()
-  const dispatch = useAppDispatch()
+  const { library } = useActiveWeb3React()
+  const dispatch = useDispatch<AppDispatch>()
   const isWindowVisible = useIsWindowVisible()
 
   // get all loaded lists, and the active urls
   const lists = useAllLists()
-  const listsState = useAppSelector((state) => state.lists)
-  const rehydrated = useStateRehydrated()
-
-  useEffect(() => {
-    if (rehydrated) TokenSafetyLookupTable.update(listsState)
-  }, [listsState, rehydrated])
+  const activeListUrls = useActiveListUrls()
 
   const fetchList = useFetchListCallback()
   const fetchAllListsCallback = useCallback(() => {
     if (!isWindowVisible) return
-    DEFAULT_LIST_OF_LISTS.forEach((url) => {
-      // Skip validation on unsupported lists
+    Object.keys(lists).forEach((url) =>
       fetchList(url).catch((error) => console.debug('interval list fetching error', error))
-    })
-  }, [fetchList, isWindowVisible])
+    )
+  }, [fetchList, isWindowVisible, lists])
 
-  // fetch all lists every 10 minutes, but only after we initialize provider
-  useInterval(fetchAllListsCallback, provider ? ms(`10m`) : null)
+  // fetch all lists every 10 minutes, but only after we initialize library
+  useInterval(fetchAllListsCallback, library ? 1000 * 60 * 10 : null)
 
+  // whenever a list is not loaded and not loading, try again to load it
   useEffect(() => {
-    if (!rehydrated) return // loaded lists will not be available until state is rehydrated
-
-    // whenever a list is not loaded and not loading, try again to load it
     Object.keys(lists).forEach((listUrl) => {
       const list = lists[listUrl]
       if (!list.current && !list.loadingRequestId && !list.error) {
         fetchList(listUrl).catch((error) => console.debug('list added fetching error', error))
       }
     })
-  }, [dispatch, fetchList, lists, rehydrated])
+  }, [dispatch, fetchList, library, lists])
+
+  // if any lists from unsupported lists are loaded, check them too (in case new updates since last visit)
+  useEffect(() => {
+    UNSUPPORTED_LIST_URLS.forEach((listUrl) => {
+      const list = lists[listUrl]
+      if (!list || (!list.current && !list.loadingRequestId && !list.error)) {
+        fetchList(listUrl).catch((error) => console.debug('list added fetching error', error))
+      }
+    })
+  }, [dispatch, fetchList, library, lists])
 
   // automatically update lists if versions are minor/patch
   useEffect(() => {
@@ -62,19 +61,25 @@ export default function Updater(): null {
           case VersionUpgrade.NONE:
             throw new Error('unexpected no version bump')
           case VersionUpgrade.PATCH:
-          case VersionUpgrade.MINOR: {
-            if (shouldAcceptVersionUpdate(listUrl, list.current, list.pendingUpdate, bump)) {
+          case VersionUpgrade.MINOR:
+            const min = minVersionBump(list.current.tokens, list.pendingUpdate.tokens)
+            // automatically update minor/patch as long as bump matches the min update
+            if (bump >= min) {
               dispatch(acceptListUpdate(listUrl))
+            } else {
+              console.error(
+                `List at url ${listUrl} could not automatically update because the version bump was only PATCH/MINOR while the update had breaking changes and should have been MAJOR`
+              )
             }
             break
-          }
+
           // update any active or inactive lists
           case VersionUpgrade.MAJOR:
             dispatch(acceptListUpdate(listUrl))
         }
       }
     })
-  }, [dispatch, lists])
+  }, [dispatch, lists, activeListUrls])
 
   return null
 }

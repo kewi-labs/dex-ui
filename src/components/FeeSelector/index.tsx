@@ -1,44 +1,17 @@
-import { Trans } from '@lingui/macro'
+import React from 'react'
 import { FeeAmount } from '@uniswap/v3-sdk'
-import { useWeb3React } from '@web3-react/core'
-import { ButtonGray } from 'components/Button'
-import Card from 'components/Card'
+import { useTranslation } from 'react-i18next'
 import { AutoColumn } from 'components/Column'
-import { RowBetween } from 'components/Row'
-import usePrevious from 'hooks/usePrevious'
 import { DynamicSection } from 'pages/AddLiquidity/styled'
-import { useCallback, useEffect, useState } from 'react'
-import { Box } from 'rebass'
-import styled, { keyframes } from 'styled-components'
-import { ThemedText } from 'theme/components'
+import { TYPE } from 'theme'
+import { RowBetween } from 'components/Row'
+import { ButtonRadioChecked } from 'components/Button'
+import styled from 'styled-components/macro'
 
-import { FeeOption } from './FeeOption'
-import { FEE_AMOUNT_DETAIL } from './shared'
-
-const pulse = (color: string) => keyframes`
-  0% {
-    box-shadow: 0 0 0 0 ${color};
-  }
-
-  70% {
-    box-shadow: 0 0 0 2px ${color};
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 ${color};
-  }
-`
-const FocusedOutlineCard = styled(Card)<{ pulsing: boolean }>`
-  border: 1px solid ${({ theme }) => theme.surface3};
-  animation: ${({ pulsing, theme }) => pulsing && pulse(theme.accent1)} 0.6s linear;
-  align-self: center;
-`
-
-const Select = styled.div`
-  align-items: flex-start;
-  display: grid;
-  grid-auto-flow: column;
-  grid-gap: 8px;
+const ResponsiveText = styled(TYPE.label)`
+  ${({ theme }) => theme.mediaWidth.upToSmall`
+    font-size: 12px;
+  `};
 `
 
 export default function FeeSelector({
@@ -50,83 +23,53 @@ export default function FeeSelector({
   feeAmount?: FeeAmount
   handleFeePoolSelect: (feeAmount: FeeAmount) => void
 }) {
-  const { chainId } = useWeb3React()
-
-  const [showOptions, setShowOptions] = useState(false)
-  const [pulsing, setPulsing] = useState(false)
-
-  const previousFeeAmount = usePrevious(feeAmount)
-
-  const handleFeePoolSelectWithEvent = useCallback(
-    (fee: FeeAmount) => {
-      handleFeePoolSelect(fee)
-    },
-    [handleFeePoolSelect]
-  )
-
-  useEffect(() => {
-    if (feeAmount) {
-      return
-    }
-
-    setShowOptions(true)
-  }, [feeAmount, handleFeePoolSelect])
-
-  useEffect(() => {
-    if (feeAmount && previousFeeAmount !== feeAmount) {
-      setPulsing(true)
-    }
-  }, [previousFeeAmount, feeAmount])
+  const { t } = useTranslation()
 
   return (
     <AutoColumn gap="16px">
       <DynamicSection gap="md" disabled={disabled}>
-        <FocusedOutlineCard pulsing={pulsing} onAnimationEnd={() => setPulsing(false)}>
-          <RowBetween>
-            <AutoColumn id="add-liquidity-selected-fee">
-              {!feeAmount ? (
-                <>
-                  <ThemedText.DeprecatedLabel>
-                    <Trans>Fee tier</Trans>
-                  </ThemedText.DeprecatedLabel>
-                  <ThemedText.DeprecatedMain fontWeight={485} fontSize="12px" textAlign="left">
-                    <Trans>The % you will earn in fees.</Trans>
-                  </ThemedText.DeprecatedMain>
-                </>
-              ) : (
-                <>
-                  <ThemedText.DeprecatedLabel className="selected-fee-label">
-                    <Trans>{FEE_AMOUNT_DETAIL[feeAmount].label}% fee tier</Trans>
-                  </ThemedText.DeprecatedLabel>
-                  <Box style={{ width: 'fit-content', marginTop: '8px' }} className="selected-fee-percentage"></Box>
-                </>
-              )}
+        <TYPE.label>{t('selectPool')}</TYPE.label>
+        <TYPE.main fontSize={14} fontWeight={400} style={{ marginBottom: '.5rem', lineHeight: '125%' }}>
+          Select a pool type based on your preferred liquidity provider fee.
+        </TYPE.main>
+        <RowBetween>
+          <ButtonRadioChecked
+            width="32%"
+            active={feeAmount === FeeAmount.LOW}
+            onClick={() => handleFeePoolSelect(FeeAmount.LOW)}
+          >
+            <AutoColumn gap="sm" justify="flex-start">
+              <ResponsiveText>0.05% {t('fee')}</ResponsiveText>
+              <TYPE.main fontWeight={400} fontSize="12px" textAlign="left">
+                Best for stable pairs.
+              </TYPE.main>
             </AutoColumn>
-
-            <ButtonGray onClick={() => setShowOptions(!showOptions)} width="auto" padding="4px" $borderRadius="6px">
-              {showOptions ? <Trans>Hide</Trans> : <Trans>Edit</Trans>}
-            </ButtonGray>
-          </RowBetween>
-        </FocusedOutlineCard>
-
-        {chainId && showOptions && (
-          <Select>
-            {[FeeAmount.LOWEST, FeeAmount.LOW, FeeAmount.MEDIUM, FeeAmount.HIGH].map((_feeAmount, i) => {
-              const { supportedChains } = FEE_AMOUNT_DETAIL[_feeAmount]
-              if (supportedChains.includes(chainId)) {
-                return (
-                  <FeeOption
-                    feeAmount={_feeAmount}
-                    active={feeAmount === _feeAmount}
-                    onClick={() => handleFeePoolSelectWithEvent(_feeAmount)}
-                    key={i}
-                  />
-                )
-              }
-              return null
-            })}
-          </Select>
-        )}
+          </ButtonRadioChecked>
+          <ButtonRadioChecked
+            width="32%"
+            active={feeAmount === FeeAmount.MEDIUM}
+            onClick={() => handleFeePoolSelect(FeeAmount.MEDIUM)}
+          >
+            <AutoColumn gap="sm" justify="flex-start">
+              <ResponsiveText>0.3% {t('fee')}</ResponsiveText>
+              <TYPE.main fontWeight={400} fontSize="12px" textAlign="left">
+                Best for most pairs.
+              </TYPE.main>
+            </AutoColumn>
+          </ButtonRadioChecked>
+          <ButtonRadioChecked
+            width="32%"
+            active={feeAmount === FeeAmount.HIGH}
+            onClick={() => handleFeePoolSelect(FeeAmount.HIGH)}
+          >
+            <AutoColumn gap="sm" justify="flex-start">
+              <ResponsiveText>1% {t('fee')}</ResponsiveText>
+              <TYPE.main fontWeight={400} fontSize="12px" textAlign="left">
+                Best for exotic pairs.
+              </TYPE.main>
+            </AutoColumn>
+          </ButtonRadioChecked>
+        </RowBetween>
       </DynamicSection>
     </AutoColumn>
   )

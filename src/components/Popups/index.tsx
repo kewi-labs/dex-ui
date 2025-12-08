@@ -1,22 +1,21 @@
-import { useActivePopups } from 'state/application/hooks'
-import styled from 'styled-components'
-import { Z_INDEX } from 'theme/zIndex'
-
-import { useAccountDrawer } from '../AccountDrawer'
+import React from 'react'
+import styled from 'styled-components/macro'
+import { useActivePopups } from '../../state/application/hooks'
 import { AutoColumn } from '../Column'
 import PopupItem from './PopupItem'
+import ClaimPopup from './ClaimPopup'
+import { useURLWarningVisible } from '../../state/user/hooks'
 
-const MobilePopupWrapper = styled.div`
+const MobilePopupWrapper = styled.div<{ height: string | number }>`
   position: relative;
   max-width: 100%;
-  margin: 0 auto;
-  display: none;
-  padding-left: 20px;
-  padding-right: 20px;
+  height: ${({ height }) => height};
+  margin: ${({ height }) => (height ? '0 auto;' : 0)};
+  margin-bottom: ${({ height }) => (height ? '20px' : 0)}};
 
-  ${({ theme }) => theme.deprecated_mediaWidth.deprecated_upToSmall`
+  display: none;
+  ${({ theme }) => theme.mediaWidth.upToSmall`
     display: block;
-    padding-top: 20px;
   `};
 `
 
@@ -32,47 +31,43 @@ const MobilePopupInner = styled.div`
   }
 `
 
-const FixedPopupColumn = styled(AutoColumn)<{
-  drawerOpen: boolean
-}>`
+const FixedPopupColumn = styled(AutoColumn)<{ extraPadding: boolean }>`
   position: fixed;
-  top: ${({ drawerOpen }) => `${64 + (drawerOpen ? -50 : 0)}px`};
+  top: ${({ extraPadding }) => (extraPadding ? '72px' : '88px')};
   right: 1rem;
-  max-width: 348px !important;
+  max-width: 355px !important;
   width: 100%;
-  z-index: ${Z_INDEX.modal};
-  transition: ${({ theme }) => `top ${theme.transition.timing.inOut} ${theme.transition.duration.slow}`};
+  z-index: 3;
 
-  ${({ theme }) => theme.deprecated_mediaWidth.deprecated_upToSmall`
+  ${({ theme }) => theme.mediaWidth.upToSmall`
     display: none;
   `};
 `
 
 export default function Popups() {
-  const [isAccountDrawerOpen] = useAccountDrawer()
-
   // get all popups
   const activePopups = useActivePopups()
 
+  const urlWarningActive = useURLWarningVisible()
+
   return (
     <>
-      <FixedPopupColumn gap="20px" drawerOpen={isAccountDrawerOpen} data-testid="popups">
+      <FixedPopupColumn gap="20px" extraPadding={urlWarningActive}>
+        <ClaimPopup />
         {activePopups.map((item) => (
           <PopupItem key={item.key} content={item.content} popKey={item.key} removeAfterMs={item.removeAfterMs} />
         ))}
       </FixedPopupColumn>
-      {activePopups?.length > 0 && (
-        <MobilePopupWrapper data-testid="popups">
-          <MobilePopupInner>
-            {activePopups // reverse so new items up front
-              .slice(0)
-              .reverse()
-              .map((item) => (
-                <PopupItem key={item.key} content={item.content} popKey={item.key} removeAfterMs={item.removeAfterMs} />
-              ))}
-          </MobilePopupInner>
-        </MobilePopupWrapper>
-      )}
+      <MobilePopupWrapper height={activePopups?.length > 0 ? 'fit-content' : 0}>
+        <MobilePopupInner>
+          {activePopups // reverse so new items up front
+            .slice(0)
+            .reverse()
+            .map((item) => (
+              <PopupItem key={item.key} content={item.content} popKey={item.key} removeAfterMs={item.removeAfterMs} />
+            ))}
+        </MobilePopupInner>
+      </MobilePopupWrapper>
     </>
   )
 }

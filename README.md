@@ -1,48 +1,57 @@
-# Horswap
+# Uniswap Interface
+
+[![Unit Tests](https://github.com/Uniswap/uniswap-interface/actions/workflows/unit-tests.yaml/badge.svg)](https://github.com/Uniswap/uniswap-interface/actions/workflows/unit-tests.yaml)
+[![Integration Tests](https://github.com/Uniswap/uniswap-interface/actions/workflows/integration-tests.yaml/badge.svg)](https://github.com/Uniswap/uniswap-interface/actions/workflows/integration-tests.yaml)
+[![Lint](https://github.com/Uniswap/uniswap-interface/actions/workflows/lint.yml/badge.svg)](https://github.com/Uniswap/uniswap-interface/actions/workflows/lint.yml)
+[![Release](https://github.com/Uniswap/uniswap-interface/actions/workflows/release.yaml/badge.svg)](https://github.com/Uniswap/uniswap-interface/actions/workflows/release.yaml)
 
 An open source interface for Uniswap -- a protocol for decentralized exchange of Ethereum tokens.
 
-<img src="screenshot.png" style="width: 500px" />
+- Website: [uniswap.org](https://uniswap.org/)
+- Interface: [app.uniswap.org](https://app.uniswap.org)
+- Docs: [uniswap.org/docs/](https://uniswap.org/docs/)
+- Twitter: [@UniswapProtocol](https://twitter.com/UniswapProtocol)
+- Reddit: [/r/Uniswap](https://www.reddit.com/r/Uniswap/)
+- Email: [contact@uniswap.org](mailto:contact@uniswap.org)
+- Discord: [Uniswap](https://discord.gg/FCfyBSbCU5)
+- Whitepaper: [Link](https://hackmd.io/C-DvwDSfSxuh-Gd4WKE_ig)
 
-Check out Horswap via:
-- [https://2.horswap.eth.limo](https://2.horswap.eth.limo)
-- [ipns://2.horswap.eth](ipns://2.horswap.eth)
-- [ipfs://bafybeibtdjzmhx77pxlpmy7fqnwyb7dmrtwbk3n6fpyw3qdgmxaznzwm44](ipfs://bafybeibtdjzmhx77pxlpmy7fqnwyb7dmrtwbk3n6fpyw3qdgmxaznzwm44)
+## Accessing the Uniswap Interface
 
-# Horswap is an improved Uniswap Interface
-Horswap is a fork of [Uniswap Interface v4.266.2](https://github.com/Uniswap/interface/releases/tag/v4.266.2). The version v4.266.2 is the last version without added UI fees and that would still allow users to do local routing. Horswap has then significantly improved the interface's censorship resistance and privacy.
+To access the Uniswap Interface, use an IPFS gateway link from the
+[latest release](https://github.com/Uniswap/uniswap-interface/releases/latest),
+or visit [app.uniswap.org](https://app.uniswap.org).
 
-You can read about reasoning on why Horswap was built here: [https://listed.to/authors/33689/posts/49312](https://listed.to/authors/33689/posts/49312)
+## Development
 
-Here are the significant changes:
-- Changed Uniswap branding to Horswap branding
-- Removed Uniswap privacy policy
-- Removed all analytics queries (Uniswap interface is really noisy in reporting everything you do to their analytics system)
-- Removed support for wallet connect wallets (Unfortunately these require centralized server to function)
-- Changed socials to point to dark.florist equivalents
-- Removed copyright notices for Uniswap
-- Removed blacklisted tokens and user addresses
-- Replaced the default RPC (Infura, which censors) with Keydonix (does not censor)
-- Removed Moonpay (a centralized fiat payment processsor)
-- Removed NFT related features (unfortunately these only function by using centralized services)
-- Removed Subgraph (unfortunately this is also a centralized service)
-- Removed pages that require subgraph (mini portfolio, portfolio, NFTs, token pages, pool details, search bar etc)
-- Removed fiat currency selector (requires subgraph)
-- Removed external routing, all routing is done using the default RPC or users wallet RPC
-- Removed UniswapX (UniswapX depends on centralized servers)
-- Settings have been moved to where the mini portfolio used to be
-- Changed token pricing to be from a simulated swap with USDC, and it is shown to users that this is in USDC (not in dollars)
-- Removed claim UNI tokens popup
-- Added docker building and deployment to IPFS
+### Install Dependencies
 
-You can see all the changes by [comparing Horseswap to Uniswap Interface V4.266.2](https://github.com/Uniswap/interface/compare/v4.266.2...DarkFlorist:Horswap:main)
+```bash
+yarn install
+```
 
-# Socials
-- Website: [dark.florist](https://www.dark.florist/)
-- Uniswap Docs: [uniswap.org/docs/](https://docs.uniswap.org/)
-- Twitter: [@DarkFlorist](https://twitter.com/DarkFlorist)
-- Discord: [Dark Florists](https://discord.com/invite/aCSKcvf5VW)
-- Uniswap Whitepapers:
-  - V1 ipfs://bafybeihyq5jjttgmfdsonnbv73cshadkd3c3m3dptcrhqjeds6xij6rlim/ [dweb](https://bafybeihyq5jjttgmfdsonnbv73cshadkd3c3m3dptcrhqjeds6xij6rlim.ipfs.dweb.link/)
-  - V2 ipfs://bafybeia5cxs72meianwphz2aq2tv5irpdgmkfniqsuhznl66s677zakgce/ [dweb](https://bafybeia5cxs72meianwphz2aq2tv5irpdgmkfniqsuhznl66s677zakgce.ipfs.dweb.link/)
-  - V3 ipfs://bafybeifgsqhf44fqxz4fnhomgwxy3666vrat2zu4djs5rgvjopatcfe42y/ [dweb](https://bafybeifgsqhf44fqxz4fnhomgwxy3666vrat2zu4djs5rgvjopatcfe42y.ipfs.dweb.link/)
+### Run
+
+```bash
+yarn start
+```
+
+## Contributions
+
+**Please open all pull requests against the `main` branch.**
+CI checks will run against all PRs.
+
+## Accessing Uniswap V2
+
+The Uniswap Interface supports swapping, adding liquidity, removing liquidity and migrating liquidity for 
+Uniswap protocol V2.
+
+- Swap on Uniswap V2: https://app.uniswap.org/#/swap?use=v2
+- View V2 liquidity: https://app.uniswap.org/#/pool/v2
+- Add V2 liquidity: https://app.uniswap.org/#/add/v2
+- Migrate V2 liquidity to V3: https://app.uniswap.org/#/migrate/v2
+
+## Accessing Uniswap V1
+ 
+The Uniswap V1 interface for mainnet and testnets is accessible via IPFS gateways 
+linked from the [v1.0.0 release](https://github.com/Uniswap/uniswap-interface/releases/tag/v1.0.0).

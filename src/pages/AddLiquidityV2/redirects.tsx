@@ -1,13 +1,17 @@
-import { Navigate, useParams } from 'react-router-dom'
-
+import React from 'react'
+import { Redirect, RouteComponentProps } from 'react-router-dom'
 import AddLiquidityV2 from './index'
 
-export default function RedirectDuplicateTokenIdsV2() {
-  const { currencyIdA, currencyIdB } = useParams<{ currencyIdA: string; currencyIdB: string }>()
+export function RedirectDuplicateTokenIdsV2(props: RouteComponentProps<{ currencyIdA: string; currencyIdB: string }>) {
+  const {
+    match: {
+      params: { currencyIdA, currencyIdB },
+    },
+  } = props
 
   if (currencyIdA && currencyIdB && currencyIdA.toLowerCase() === currencyIdB.toLowerCase()) {
-    return <Navigate to={`/add/v2/${currencyIdA}`} replace />
+    return <Redirect to={`/add/v2/${currencyIdA}`} />
   }
 
-  return <AddLiquidityV2 />
+  return <AddLiquidityV2 {...props} />
 }

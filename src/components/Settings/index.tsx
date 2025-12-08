@@ -1,153 +1,239 @@
-import { Trans } from '@lingui/macro'
+import React, { useContext, useRef, useState } from 'react'
+import { Settings, X } from 'react-feather'
+import ReactGA from 'react-ga'
+import { Text } from 'rebass'
+import styled, { ThemeContext } from 'styled-components'
+import { useOnClickOutside } from '../../hooks/useOnClickOutside'
+import { ApplicationModal } from '../../state/application/actions'
+import { useModalOpen, useToggleSettingsMenu } from '../../state/application/hooks'
+import { useExpertModeManager, useUserSingleHopOnly } from '../../state/user/hooks'
+import { TYPE } from '../../theme'
+import { ButtonError } from '../Button'
+import { AutoColumn } from '../Column'
+import Modal from '../Modal'
+import QuestionHelper from '../QuestionHelper'
+import { RowBetween, RowFixed } from '../Row'
+import Toggle from '../Toggle'
+import TransactionSettings from '../TransactionSettings'
 import { Percent } from '@uniswap/sdk-core'
-import { useWeb3React } from '@web3-react/core'
-import { Scrim } from 'components/AccountDrawer'
-import AnimatedDropdown from 'components/AnimatedDropdown'
-import Column, { AutoColumn } from 'components/Column'
-import Row from 'components/Row'
-import { isSupportedChain, L2_CHAIN_IDS } from 'constants/chains'
-import useDisableScrolling from 'hooks/useDisableScrolling'
-import { useOnClickOutside } from 'hooks/useOnClickOutside'
-import { Portal } from 'nft/components/common/Portal'
-import { useIsMobile } from 'nft/hooks'
-import { useCallback, useMemo, useRef } from 'react'
-import { X } from 'react-feather'
-import { useCloseModal, useModalIsOpen, useToggleSettingsMenu } from 'state/application/hooks'
-import { ApplicationModal } from 'state/application/reducer'
-import styled from 'styled-components'
-import { Divider, ThemedText } from 'theme/components'
-import { Z_INDEX } from 'theme/zIndex'
 
-import MaxSlippageSettings from './MaxSlippageSettings'
-import MenuButton from './MenuButton'
-import TransactionDeadlineSettings from './TransactionDeadlineSettings'
+const StyledMenuIcon = styled(Settings)`
+  height: 20px;
+  width: 20px;
 
-const CloseButton = styled.button`
-  background: transparent;
-  border: none;
-  color: ${({ theme }) => theme.neutral1};
-  cursor: pointer;
-  height: 24px;
-  padding: 0;
-  width: 24px;
+  > * {
+    stroke: ${({ theme }) => theme.text2};
+  }
+
+  :hover {
+    opacity: 0.7;
+  }
 `
 
-const Menu = styled.div`
+const StyledCloseIcon = styled(X)`
+  height: 20px;
+  width: 20px;
+  :hover {
+    cursor: pointer;
+  }
+
+  > * {
+    stroke: ${({ theme }) => theme.text1};
+  }
+`
+
+const StyledMenuButton = styled.button`
   position: relative;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background-color: transparent;
+  margin: 0;
+  padding: 0;
+  border-radius: 0.5rem;
+  height: 20px;
+
+  :hover,
+  :focus {
+    cursor: pointer;
+    outline: none;
+  }
+`
+const EmojiWrapper = styled.div`
+  position: absolute;
+  bottom: -6px;
+  right: 0px;
+  font-size: 14px;
 `
 
-const MenuFlyout = styled(AutoColumn)`
+const StyledMenu = styled.div`
+  margin-left: 0.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  border: none;
+  text-align: left;
+`
+
+const MenuFlyout = styled.span`
   min-width: 20.125rem;
-  background-color: ${({ theme }) => theme.surface1};
-  border: 1px solid ${({ theme }) => theme.surface3};
+  background-color: ${({ theme }) => theme.bg2};
+  border: 1px solid ${({ theme }) => theme.bg3};
   box-shadow: 0px 0px 1px rgba(0, 0, 0, 0.01), 0px 4px 8px rgba(0, 0, 0, 0.04), 0px 16px 24px rgba(0, 0, 0, 0.04),
     0px 24px 32px rgba(0, 0, 0, 0.01);
   border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  font-size: 1rem;
   position: absolute;
-  top: 100%;
-  margin-top: 10px;
-  right: 0;
+  top: 2rem;
+  right: 0rem;
   z-index: 100;
-  color: ${({ theme }) => theme.neutral1};
-  ${({ theme }) => theme.deprecated_mediaWidth.deprecated_upToMedium`
+
+  ${({ theme }) => theme.mediaWidth.upToMedium`
     min-width: 18.125rem;
   `};
+
   user-select: none;
-  padding: 16px;
 `
 
-const MobileMenuContainer = styled(Row)`
-  overflow: visible;
-  position: fixed;
-  height: 100%;
-  top: 100vh;
-  left: 0;
-  right: 0;
+const Break = styled.div`
   width: 100%;
-  z-index: ${Z_INDEX.fixed};
+  height: 1px;
+  background-color: ${({ theme }) => theme.bg3};
 `
 
-const MobileMenuWrapper = styled(Column)<{ $open: boolean }>`
-  height: min-content;
-  width: 100%;
-  padding: 8px 16px 24px;
-  background-color: ${({ theme }) => theme.surface1};
-  overflow: hidden;
-  position: absolute;
-  bottom: ${({ $open }) => ($open ? `100vh` : 0)};
-  transition: bottom ${({ theme }) => theme.transition.duration.medium};
-  border: ${({ theme }) => `1px solid ${theme.surface3}`};
-  border-radius: 12px;
-  border-bottom-right-radius: 0px;
-  border-bottom-left-radius: 0px;
-  font-size: 16px;
-  box-shadow: unset;
-  z-index: ${Z_INDEX.modal};
+const ModalContentWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0;
+  background-color: ${({ theme }) => theme.bg2};
+  border-radius: 20px;
 `
 
-const MobileMenuHeader = styled(Row)`
-  margin-bottom: 16px;
-`
+export default function SettingsTab({ placeholderSlippage }: { placeholderSlippage: Percent }) {
+  const node = useRef<HTMLDivElement>()
+  const open = useModalOpen(ApplicationModal.SETTINGS)
+  const toggle = useToggleSettingsMenu()
 
-export default function SettingsTab({ autoSlippage, chainId }: { autoSlippage: Percent; chainId?: number }) {
-  const { chainId: connectedChainId } = useWeb3React()
-  const showDeadlineSettings = Boolean(chainId && !L2_CHAIN_IDS.includes(chainId))
-  const node = useRef<HTMLDivElement | null>(null)
-  const isOpen = useModalIsOpen(ApplicationModal.SETTINGS)
+  const theme = useContext(ThemeContext)
 
-  const closeModal = useCloseModal()
-  const closeMenu = useCallback(() => closeModal(ApplicationModal.SETTINGS), [closeModal])
-  const toggleMenu = useToggleSettingsMenu()
+  const [expertMode, toggleExpertMode] = useExpertModeManager()
 
-  const isMobile = useIsMobile()
-  const isOpenMobile = isOpen && isMobile
-  const isOpenDesktop = isOpen && !isMobile
+  const [singleHopOnly, setSingleHopOnly] = useUserSingleHopOnly()
 
-  useOnClickOutside(node, isOpenDesktop ? closeMenu : undefined)
-  useDisableScrolling(isOpen)
+  // show confirmation view before turning on
+  const [showConfirmation, setShowConfirmation] = useState(false)
 
-  const isChainSupported = isSupportedChain(chainId)
-  const Settings = useMemo(
-    () => (
-      <>
-        <AnimatedDropdown open={true}>
-          <MaxSlippageSettings autoSlippage={autoSlippage} />
-          {showDeadlineSettings && (
-            <>
-              <Divider />
-              <TransactionDeadlineSettings />
-            </>
-          )}
-        </AnimatedDropdown>
-      </>
-    ),
-    [autoSlippage, showDeadlineSettings]
-  )
+  useOnClickOutside(node, open ? toggle : undefined)
 
   return (
-    <Menu ref={node}>
-      <MenuButton disabled={!isChainSupported || chainId !== connectedChainId} isActive={isOpen} onClick={toggleMenu} />
-      {isOpenDesktop && <MenuFlyout>{Settings}</MenuFlyout>}
-      {isOpenMobile && (
-        <Portal>
-          <MobileMenuContainer data-testid="mobile-settings-menu">
-            <Scrim onClick={closeMenu} $open />
-            <MobileMenuWrapper $open>
-              <MobileMenuHeader padding="8px 0px 4px">
-                <CloseButton data-testid="mobile-settings-close" onClick={closeMenu}>
-                  <X size={24} />
-                </CloseButton>
-                <Row padding="0px 24px 0px 0px" justify="center">
-                  <ThemedText.SubHeader>
-                    <Trans>Settings</Trans>
-                  </ThemedText.SubHeader>
-                </Row>
-              </MobileMenuHeader>
-              {Settings}
-            </MobileMenuWrapper>
-          </MobileMenuContainer>
-        </Portal>
+    // https://github.com/DefinitelyTyped/DefinitelyTyped/issues/30451
+    <StyledMenu ref={node as any}>
+      <Modal isOpen={showConfirmation} onDismiss={() => setShowConfirmation(false)} maxHeight={100}>
+        <ModalContentWrapper>
+          <AutoColumn gap="lg">
+            <RowBetween style={{ padding: '0 2rem' }}>
+              <div />
+              <Text fontWeight={500} fontSize={20}>
+                Are you sure?
+              </Text>
+              <StyledCloseIcon onClick={() => setShowConfirmation(false)} />
+            </RowBetween>
+            <Break />
+            <AutoColumn gap="lg" style={{ padding: '0 2rem' }}>
+              <Text fontWeight={500} fontSize={20}>
+                Expert mode turns off the confirm transaction prompt and allows high slippage trades that often result
+                in bad rates and lost funds.
+              </Text>
+              <Text fontWeight={600} fontSize={20}>
+                ONLY USE THIS MODE IF YOU KNOW WHAT YOU ARE DOING.
+              </Text>
+              <ButtonError
+                error={true}
+                padding={'12px'}
+                onClick={() => {
+                  if (window.prompt(`Please type the word "confirm" to enable expert mode.`) === 'confirm') {
+                    toggleExpertMode()
+                    setShowConfirmation(false)
+                  }
+                }}
+              >
+                <Text fontSize={20} fontWeight={500} id="confirm-expert-mode">
+                  Turn On Expert Mode
+                </Text>
+              </ButtonError>
+            </AutoColumn>
+          </AutoColumn>
+        </ModalContentWrapper>
+      </Modal>
+      <StyledMenuButton onClick={toggle} id="open-settings-dialog-button">
+        <StyledMenuIcon />
+        {expertMode ? (
+          <EmojiWrapper>
+            <span role="img" aria-label="wizard-icon">
+              🧙
+            </span>
+          </EmojiWrapper>
+        ) : null}
+      </StyledMenuButton>
+      {open && (
+        <MenuFlyout>
+          <AutoColumn gap="md" style={{ padding: '1rem' }}>
+            <Text fontWeight={600} fontSize={14}>
+              Transaction Settings
+            </Text>
+            <TransactionSettings placeholderSlippage={placeholderSlippage} />
+            <Text fontWeight={600} fontSize={14}>
+              Interface Settings
+            </Text>
+            <RowBetween>
+              <RowFixed>
+                <TYPE.black fontWeight={400} fontSize={14} color={theme.text2}>
+                  Toggle Expert Mode
+                </TYPE.black>
+                <QuestionHelper text="Allow high price impact trades and skip the confirm screen. Use at your own risk." />
+              </RowFixed>
+              <Toggle
+                id="toggle-expert-mode-button"
+                isActive={expertMode}
+                toggle={
+                  expertMode
+                    ? () => {
+                        toggleExpertMode()
+                        setShowConfirmation(false)
+                      }
+                    : () => {
+                        toggle()
+                        setShowConfirmation(true)
+                      }
+                }
+              />
+            </RowBetween>
+            <RowBetween>
+              <RowFixed>
+                <TYPE.black fontWeight={400} fontSize={14} color={theme.text2}>
+                  Disable Multihops
+                </TYPE.black>
+                <QuestionHelper text="Restricts swaps to direct pairs only." />
+              </RowFixed>
+              <Toggle
+                id="toggle-disable-multihop-button"
+                isActive={singleHopOnly}
+                toggle={() => {
+                  ReactGA.event({
+                    category: 'Routing',
+                    action: singleHopOnly ? 'disable single hop' : 'enable single hop',
+                  })
+                  setSingleHopOnly(!singleHopOnly)
+                }}
+              />
+            </RowBetween>
+          </AutoColumn>
+        </MenuFlyout>
       )}
-    </Menu>
+    </StyledMenu>
   )
 }

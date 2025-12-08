@@ -1,8 +1,11 @@
-import { Trans } from '@lingui/macro'
-import { AlertTriangle, Slash } from 'react-feather'
-import styled, { useTheme } from 'styled-components'
+import React from 'react'
+
+import Badge, { BadgeVariant } from 'components/Badge'
+import styled from 'styled-components/macro'
 
 import { MouseoverTooltip } from '../../components/Tooltip'
+import { useTranslation } from 'react-i18next'
+import { AlertCircle } from 'react-feather'
 
 const BadgeWrapper = styled.div`
   font-size: 14px;
@@ -11,10 +14,8 @@ const BadgeWrapper = styled.div`
 `
 
 const BadgeText = styled.div`
-  font-weight: 535;
-  font-size: 12px;
-  line-height: 14px;
-  margin-right: 8px;
+  font-weight: 500;
+  font-size: 14px;
 `
 
 const ActiveDot = styled.span`
@@ -22,58 +23,53 @@ const ActiveDot = styled.span`
   border-radius: 50%;
   height: 8px;
   width: 8px;
+  margin-right: 4px;
 `
 
-const LabelText = styled.div<{ color: string }>`
-  align-items: center;
-  color: ${({ color }) => color};
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-end;
+export const DarkBadge = styled.div`
+  width: fit-content;
+  border-radius: 8px;
+  background-color: ${({ theme }) => theme.bg0};
+  padding: 4px 6px;
 `
 
-export default function RangeBadge({ removed, inRange }: { removed?: boolean; inRange?: boolean }) {
-  const theme = useTheme()
+export default function RangeBadge({
+  removed,
+  inRange,
+}: {
+  removed: boolean | undefined
+  inRange: boolean | undefined
+}) {
+  const { t } = useTranslation()
+
   return (
     <BadgeWrapper>
       {removed ? (
-        <MouseoverTooltip text={<Trans>Your position has 0 liquidity, and is not earning fees.</Trans>}>
-          <LabelText color={theme.neutral2}>
-            <BadgeText>
-              <Trans>Closed</Trans>
-            </BadgeText>
-            <Slash width={12} height={12} />
-          </LabelText>
+        <MouseoverTooltip text={`Your position has 0 liquidity, and is not earning fees.`}>
+          <Badge variant={BadgeVariant.DEFAULT}>
+            <AlertCircle width={14} height={14} />
+            &nbsp;
+            <BadgeText>{t('Inactive')}</BadgeText>
+          </Badge>
         </MouseoverTooltip>
       ) : inRange ? (
         <MouseoverTooltip
-          text={
-            <Trans>
-              The price of this pool is within your selected range. Your position is currently earning fees.
-            </Trans>
-          }
+          text={`The price of this pool is within your selected range. Your position is currently earning fees.`}
         >
-          <LabelText color={theme.success}>
-            <BadgeText>
-              <Trans>In range</Trans>
-            </BadgeText>
-            <ActiveDot />
-          </LabelText>
+          <Badge variant={BadgeVariant.DEFAULT}>
+            <ActiveDot /> &nbsp;
+            <BadgeText>{t('In range')}</BadgeText>
+          </Badge>
         </MouseoverTooltip>
       ) : (
         <MouseoverTooltip
-          text={
-            <Trans>
-              The price of this pool is outside of your selected range. Your position is not currently earning fees.
-            </Trans>
-          }
+          text={`The price of this pool is outside of your selected range. Your position is not currently earning fees.`}
         >
-          <LabelText color={theme.deprecated_accentWarning}>
-            <BadgeText>
-              <Trans>Out of range</Trans>
-            </BadgeText>
-            <AlertTriangle width={12} height={12} />
-          </LabelText>
+          <Badge variant={BadgeVariant.WARNING}>
+            <AlertCircle width={14} height={14} />
+            &nbsp;
+            <BadgeText>{t('Out of range')}</BadgeText>
+          </Badge>
         </MouseoverTooltip>
       )}
     </BadgeWrapper>

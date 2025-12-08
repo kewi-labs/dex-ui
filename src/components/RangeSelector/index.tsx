@@ -1,8 +1,9 @@
-import { Trans } from '@lingui/macro'
+import React from 'react'
 import { Currency, Price, Token } from '@uniswap/sdk-core'
 import StepCounter from 'components/InputStepCounter/InputStepCounter'
-import { AutoRow } from 'components/Row'
-import { Bound } from 'state/mint/v3/actions'
+import { RowBetween } from 'components/Row'
+import { useActiveWeb3React } from 'hooks/web3'
+import { wrappedCurrency } from 'utils/wrappedCurrency'
 
 // currencyA is the base token
 export default function RangeSelector({
@@ -17,7 +18,6 @@ export default function RangeSelector({
   currencyA,
   currencyB,
   feeAmount,
-  ticksAtLimit,
 }: {
   priceLower?: Price<Token, Token>
   priceUpper?: Price<Token, Token>
@@ -30,43 +30,41 @@ export default function RangeSelector({
   currencyA?: Currency | null
   currencyB?: Currency | null
   feeAmount?: number
-  ticksAtLimit: { [bound in Bound]?: boolean | undefined }
 }) {
-  const tokenA = (currencyA ?? undefined)?.wrapped
-  const tokenB = (currencyB ?? undefined)?.wrapped
+  const { chainId } = useActiveWeb3React()
+  const tokenA = wrappedCurrency(currencyA ?? undefined, chainId)
+  const tokenB = wrappedCurrency(currencyB ?? undefined, chainId)
   const isSorted = tokenA && tokenB && tokenA.sortsBefore(tokenB)
 
   const leftPrice = isSorted ? priceLower : priceUpper?.invert()
   const rightPrice = isSorted ? priceUpper : priceLower?.invert()
 
   return (
-    <AutoRow gap="md">
+    <RowBetween>
       <StepCounter
-        value={ticksAtLimit[isSorted ? Bound.LOWER : Bound.UPPER] ? '0' : leftPrice?.toSignificant(8) ?? ''}
+        value={leftPrice?.toSignificant(5) ?? ''}
         onUserInput={onLeftRangeInput}
+        width="48%"
         decrement={isSorted ? getDecrementLower : getIncrementUpper}
         increment={isSorted ? getIncrementLower : getDecrementUpper}
-        decrementDisabled={leftPrice === undefined || ticksAtLimit[isSorted ? Bound.LOWER : Bound.UPPER]}
-        incrementDisabled={leftPrice === undefined || ticksAtLimit[isSorted ? Bound.LOWER : Bound.UPPER]}
         feeAmount={feeAmount}
         label={leftPrice ? `${currencyB?.symbol}` : '-'}
-        title={<Trans>Low price</Trans>}
+        title={'Min Price'}
         tokenA={currencyA?.symbol}
         tokenB={currencyB?.symbol}
       />
       <StepCounter
-        value={ticksAtLimit[isSorted ? Bound.UPPER : Bound.LOWER] ? '∞' : rightPrice?.toSignificant(8) ?? ''}
+        value={rightPrice?.toSignificant(5) ?? ''}
         onUserInput={onRightRangeInput}
+        width="48%"
         decrement={isSorted ? getDecrementUpper : getIncrementLower}
         increment={isSorted ? getIncrementUpper : getDecrementLower}
-        incrementDisabled={rightPrice === undefined || ticksAtLimit[isSorted ? Bound.UPPER : Bound.LOWER]}
-        decrementDisabled={rightPrice === undefined || ticksAtLimit[isSorted ? Bound.UPPER : Bound.LOWER]}
         feeAmount={feeAmount}
         label={rightPrice ? `${currencyB?.symbol}` : '-'}
         tokenA={currencyA?.symbol}
         tokenB={currencyB?.symbol}
-        title={<Trans>High price</Trans>}
+        title={'Max Price'}
       />
-    </AutoRow>
+    </RowBetween>
   )
 }

@@ -1,91 +1,49 @@
-import { BigNumber } from '@ethersproject/bignumber'
-import type { TransactionResponse } from '@ethersproject/providers'
-import { ChainId, SUPPORTED_CHAINS, Token } from '@uniswap/sdk-core'
-import { useWeb3React } from '@web3-react/core'
-import { getTransactionStatus } from 'components/AccountDrawer/MiniPortfolio/Activity/parseLocal'
-import { SwapResult } from 'hooks/useSwapCallback'
+import { TransactionResponse } from '@ethersproject/providers'
 import { useCallback, useMemo } from 'react'
-import { useAppDispatch, useAppSelector } from 'state/hooks'
-import { TradeFillType } from 'state/routing/types'
-import { TransactionStatus } from 'types/types-and-hooks'
+import { useDispatch, useSelector } from 'react-redux'
 
-import { addTransaction, cancelTransaction, removeTransaction } from './reducer'
-import { TransactionDetails, TransactionInfo, TransactionType } from './types'
+import { useActiveWeb3React } from '../../hooks/web3'
+import { AppDispatch, AppState } from '../index'
+import { addTransaction } from './actions'
+import { TransactionDetails } from './reducer'
 
 // helper that can take a ethers library transaction response and add it to the list of transactions
 export function useTransactionAdder(): (
   response: TransactionResponse,
-  info: TransactionInfo,
-  deadline?: number
+  customData?: { summary?: string; approval?: { tokenAddress: string; spender: string }; claim?: { recipient: string } }
 ) => void {
-  const { chainId, account } = useWeb3React()
-  const dispatch = useAppDispatch()
+  const { chainId, account } = useActiveWeb3React()
+  const dispatch = useDispatch<AppDispatch>()
 
   return useCallback(
-    (response: TransactionResponse, info: TransactionInfo, deadline?: number) => {
+    (
+      response: TransactionResponse,
+      {
+        summary,
+        approval,
+        claim,
+      }: { summary?: string; claim?: { recipient: string }; approval?: { tokenAddress: string; spender: string } } = {}
+    ) => {
       if (!account) return
       if (!chainId) return
 
-      const { hash, nonce } = response
+      const { hash } = response
       if (!hash) {
         throw Error('No transaction hash found.')
       }
-      dispatch(addTransaction({ hash, from: account, info, chainId, nonce, deadline }))
+      dispatch(addTransaction({ hash, from: account, chainId, approval, summary, claim }))
     },
-    [account, chainId, dispatch]
-  )
-}
-
-export function useTransactionRemover() {
-  const { chainId, account } = useWeb3React()
-  const dispatch = useAppDispatch()
-
-  return useCallback(
-    (hash: string) => {
-      if (!account) return
-      if (!chainId) return
-
-      dispatch(removeTransaction({ hash, chainId }))
-    },
-    [account, chainId, dispatch]
-  )
-}
-
-export function useTransactionCanceller() {
-  const dispatch = useAppDispatch()
-
-  return useCallback(
-    (hash: string, chainId: number, cancelHash: string) => {
-      dispatch(cancelTransaction({ hash, chainId, cancelHash }))
-    },
-    [dispatch]
-  )
-}
-
-export function useMultichainTransactions(): [TransactionDetails, ChainId][] {
-  const state = useAppSelector((state) => state.transactions)
-  return SUPPORTED_CHAINS.flatMap((chainId) =>
-    state[chainId] ? Object.values(state[chainId]).map((tx): [TransactionDetails, ChainId] => [tx, chainId]) : []
+    [dispatch, chainId, account]
   )
 }
 
 // returns all the transactions for the current chain
-function useAllTransactions(): { [txHash: string]: TransactionDetails } {
-  const { chainId } = useWeb3React()
+export function useAllTransactions(): { [txHash: string]: TransactionDetails } {
+  const { chainId } = useActiveWeb3React()
 
-  const state = useAppSelector((state) => state.transactions)
+  const state = useSelector<AppState, AppState['transactions']>((state) => state.transactions)
 
   return chainId ? state[chainId] ?? {} : {}
-}
-
-export function useTransaction(transactionHash?: string): TransactionDetails | undefined {
-  const allTransactions = useAllTransactions()
-
-  if (!transactionHash) {
-    return undefined
-  }
-
-  return allTransactions[transactionHash]
 }
 
 export function useIsTransactionPending(transactionHash?: string): boolean {
@@ -93,67 +51,54 @@ export function useIsTransactionPending(transactionHash?: string): boolean {
 
   if (!transactionHash || !transactions[transactionHash]) return false
 
-  return isPendingTx(transactions[transactionHash])
-}
-
-export function useIsTransactionConfirmed(transactionHash?: string): boolean {
-  const transactions = useAllTransactions()
-
-  if (!transactionHash || !transactions[transactionHash]) return false
-
-  return Boolean(transactions[transactionHash].receipt)
-}
-
-export function useSwapTransactionStatus(swapResult: SwapResult | undefined): TransactionStatus | undefined {
-  const transaction = useTransaction(swapResult?.type === TradeFillType.Classic ? swapResult.response.hash : undefined)
-  if (!transaction) return undefined
-  return getTransactionStatus(transaction)
+  return !transactions[transactionHash].receipt
 }
 
 /**
  * Returns whether a transaction happened in the last day (86400 seconds * 1000 milliseconds / second)
  * @param tx to check for recency
  */
-function isTransactionRecent(tx: TransactionDetails): boolean {
+export function isTransactionRecent(tx: TransactionDetails): boolean {
   return new Date().getTime() - tx.addedTime < 86_400_000
 }
 
-function usePendingApprovalAmount(token?: Token, spender?: string): BigNumber | undefined {
-  const allTransactions = useAllTransactions()
-  return useMemo(() => {
-    if (typeof token?.address !== 'string' || typeof spender !== 'string') {
-      return undefined
-    }
-    for (const txHash in allTransactions) {
-      const tx = allTransactions[txHash]
-      if (!tx || tx.receipt || tx.info.type !== TransactionType.APPROVAL) continue
-      if (tx.info.spender === spender && tx.info.tokenAddress === token.address && isTransactionRecent(tx)) {
-        return BigNumber.from(tx.info.amount)
-      }
-    }
-    return undefined
-  }, [allTransactions, spender, token?.address])
-}
-
 // returns whether a token has a pending approval transaction
-export function useHasPendingApproval(token?: Token, spender?: string): boolean {
-  return usePendingApprovalAmount(token, spender)?.gt(0) ?? false
-}
-
-export function useHasPendingRevocation(token?: Token, spender?: string): boolean {
-  return usePendingApprovalAmount(token, spender)?.eq(0) ?? false
-}
-
-export function isPendingTx(tx: TransactionDetails): boolean {
-  return !tx.receipt && !tx.cancelled
-}
-
-export function usePendingTransactions(): TransactionDetails[] {
+export function useHasPendingApproval(tokenAddress: string | undefined, spender: string | undefined): boolean {
   const allTransactions = useAllTransactions()
-  const { account } = useWeb3React()
-
   return useMemo(
-    () => Object.values(allTransactions).filter((tx) => tx.from === account && isPendingTx(tx)),
-    [account, allTransactions]
+    () =>
+      typeof tokenAddress === 'string' &&
+      typeof spender === 'string' &&
+      Object.keys(allTransactions).some((hash) => {
+        const tx = allTransactions[hash]
+        if (!tx) return false
+        if (tx.receipt) {
+          return false
+        } else {
+          const approval = tx.approval
+          if (!approval) return false
+          return approval.spender === spender && approval.tokenAddress === tokenAddress && isTransactionRecent(tx)
+        }
+      }),
+    [allTransactions, spender, tokenAddress]
   )
+}
+
+// watch for submissions to claim
+// return null if not done loading, return undefined if not found
+export function useUserHasSubmittedClaim(
+  account?: string
+): { claimSubmitted: boolean; claimTxn: TransactionDetails | undefined } {
+  const allTransactions = useAllTransactions()
+
+  // get the txn if it has been submitted
+  const claimTxn = useMemo(() => {
+    const txnIndex = Object.keys(allTransactions).find((hash) => {
+      const tx = allTransactions[hash]
+      return tx.claim && tx.claim.recipient === account
+    })
+    return txnIndex && allTransactions[txnIndex] ? allTransactions[txnIndex] : undefined
+  }, [account, allTransactions])
+
+  return { claimSubmitted: Boolean(claimTxn), claimTxn }
 }

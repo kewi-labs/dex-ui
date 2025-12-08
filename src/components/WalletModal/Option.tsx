@@ -1,107 +1,140 @@
-import { useWeb3React } from '@web3-react/core'
-import { useToggleAccountDrawer } from 'components/AccountDrawer'
-import Loader from 'components/Icons/LoadingSpinner'
-import { ActivationStatus, useActivationState } from 'connection/activate'
-import { Connection } from 'connection/types'
-import styled from 'styled-components'
-import { useIsDarkMode } from 'theme/components/ThemeToggle'
-import { flexColumnNoWrap, flexRowNoWrap } from 'theme/styles'
+import React from 'react'
+import styled from 'styled-components/macro'
+import { ExternalLink } from '../../theme'
 
-const OptionCardLeft = styled.div`
-  ${flexColumnNoWrap};
-  flex-direction: row;
-  align-items: center;
+const InfoCard = styled.button<{ active?: boolean }>`
+  background-color: ${({ theme, active }) => (active ? theme.bg3 : theme.bg2)};
+  padding: 1rem;
+  outline: none;
+  border: 1px solid;
+  border-radius: 12px;
+  width: 100% !important;
+  &:focus {
+    box-shadow: 0 0 0 1px ${({ theme }) => theme.primary1};
+  }
+  border-color: ${({ theme, active }) => (active ? 'transparent' : theme.bg3)};
 `
 
-const OptionCardClickable = styled.button<{ selected: boolean }>`
-  align-items: center;
-  background-color: unset;
-  border: none;
-  cursor: pointer;
+const OptionCard = styled(InfoCard as any)`
   display: flex;
-  flex: 1 1 auto;
   flex-direction: row;
+  align-items: center;
   justify-content: space-between;
-  opacity: ${({ disabled, selected }) => (disabled && !selected ? '0.5' : '1')};
-  padding: 18px;
-  transition: ${({ theme }) => theme.transition.duration.fast};
+  margin-top: 2rem;
+  padding: 1rem;
+`
+
+const OptionCardLeft = styled.div`
+  ${({ theme }) => theme.flexColumnNoWrap};
+  justify-content: center;
+  height: 100%;
+`
+
+const OptionCardClickable = styled(OptionCard as any)<{ clickable?: boolean }>`
+  margin-top: 0;
+  &:hover {
+    cursor: ${({ clickable }) => (clickable ? 'pointer' : '')};
+    border: ${({ clickable, theme }) => (clickable ? `1px solid ${theme.primary1}` : ``)};
+  }
+  opacity: ${({ disabled }) => (disabled ? '0.5' : '1')};
+`
+
+const GreenCircle = styled.div`
+  ${({ theme }) => theme.flexRowNoWrap}
+  justify-content: center;
+  align-items: center;
+
+  &:first-child {
+    height: 8px;
+    width: 8px;
+    margin-right: 8px;
+    background-color: ${({ theme }) => theme.green1};
+    border-radius: 50%;
+  }
+`
+
+const CircleWrapper = styled.div`
+  color: ${({ theme }) => theme.green1};
+  display: flex;
+  justify-content: center;
+  align-items: center;
 `
 
 const HeaderText = styled.div`
-  ${flexRowNoWrap};
-  align-items: center;
-  justify-content: center;
-  color: ${(props) => (props.color === 'blue' ? ({ theme }) => theme.accent1 : ({ theme }) => theme.neutral1)};
-  font-size: 16px;
-  font-weight: 535;
-  padding: 0 8px;
+  ${({ theme }) => theme.flexRowNoWrap};
+  color: ${(props) => (props.color === 'blue' ? ({ theme }) => theme.primary1 : ({ theme }) => theme.text1)};
+  font-size: 1rem;
+  font-weight: 500;
 `
-const IconWrapper = styled.div`
-  ${flexColumnNoWrap};
+
+const SubHeader = styled.div`
+  color: ${({ theme }) => theme.text1};
+  margin-top: 10px;
+  font-size: 12px;
+`
+
+const IconWrapper = styled.div<{ size?: number | null }>`
+  ${({ theme }) => theme.flexColumnNoWrap};
   align-items: center;
   justify-content: center;
-  img {
-    ${({ theme }) => !theme.darkMode && `border: 1px solid ${theme.surface3}`};
-    border-radius: 12px;
-  }
   & > img,
   span {
-    height: 40px;
-    width: 40px;
+    height: ${({ size }) => (size ? size + 'px' : '24px')};
+    width: ${({ size }) => (size ? size + 'px' : '24px')};
   }
-  ${({ theme }) => theme.deprecated_mediaWidth.deprecated_upToMedium`
+  ${({ theme }) => theme.mediaWidth.upToMedium`
     align-items: flex-end;
   `};
 `
 
-const Wrapper = styled.div<{ disabled: boolean }>`
-  align-items: stretch;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  position: relative;
-  width: 100%;
-
-  background-color: ${({ theme }) => theme.surface2};
-
-  &:hover {
-    cursor: ${({ disabled }) => !disabled && 'pointer'};
-    background-color: ${({ theme, disabled }) => !disabled && theme.surface3};
-  }
-  &:focus {
-    background-color: ${({ theme, disabled }) => !disabled && theme.surface3};
-  }
-`
-
-interface OptionProps {
-  connection: Connection
-}
-export default function Option({ connection }: OptionProps) {
-  const { activationState, tryActivation } = useActivationState()
-  const toggleAccountDrawer = useToggleAccountDrawer()
-  const { chainId } = useWeb3React()
-  const activate = () => tryActivation(connection, toggleAccountDrawer, chainId)
-
-  const isSomeOptionPending = activationState.status === ActivationStatus.PENDING
-  const isCurrentOptionPending = isSomeOptionPending && activationState.connection.type === connection.type
-  const isDarkMode = useIsDarkMode()
-
-  return (
-    <Wrapper disabled={isSomeOptionPending}>
-      <OptionCardClickable
-        disabled={isSomeOptionPending}
-        onClick={activate}
-        selected={isCurrentOptionPending}
-        data-testid={`wallet-option-${connection.type}`}
-      >
-        <OptionCardLeft>
-          <IconWrapper>
-            <img src={connection.getIcon?.(isDarkMode)} alt={connection.getName()} />
-          </IconWrapper>
-          <HeaderText>{connection.getName()}</HeaderText>
-        </OptionCardLeft>
-        {isCurrentOptionPending && <Loader />}
-      </OptionCardClickable>
-    </Wrapper>
+export default function Option({
+  link = null,
+  clickable = true,
+  size,
+  onClick = null,
+  color,
+  header,
+  subheader = null,
+  icon,
+  active = false,
+  id,
+}: {
+  link?: string | null
+  clickable?: boolean
+  size?: number | null
+  onClick?: null | (() => void)
+  color: string
+  header: React.ReactNode
+  subheader: React.ReactNode | null
+  icon: string
+  active?: boolean
+  id: string
+}) {
+  const content = (
+    <OptionCardClickable id={id} onClick={onClick} clickable={clickable && !active} active={active}>
+      <OptionCardLeft>
+        <HeaderText color={color}>
+          {active ? (
+            <CircleWrapper>
+              <GreenCircle>
+                <div />
+              </GreenCircle>
+            </CircleWrapper>
+          ) : (
+            ''
+          )}
+          {header}
+        </HeaderText>
+        {subheader && <SubHeader>{subheader}</SubHeader>}
+      </OptionCardLeft>
+      <IconWrapper size={size}>
+        <img src={icon} alt={'Icon'} />
+      </IconWrapper>
+    </OptionCardClickable>
   )
+  if (link) {
+    return <ExternalLink href={link}>{content}</ExternalLink>
+  }
+
+  return content
 }

@@ -1,0 +1,38 @@
+{
+  "name": "Monad Tokens",
+  "timestamp": "2025-10-30T00:00:00.000Z",
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0
+  },
+  "tags": {},
+  "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/info/logo.png",
+  "keywords": ["monad", "mainnet", "default"],
+  "tokens": [
+    {
+      "name": "Wrapped MON",
+      "address": "0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A",
+      "symbol": "WMON",
+      "decimals": 18,
+      "chainId": 143,
+      "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0xe9402c6851719496f64F69eF8B8Cb82099d3Abca/logo.png"
+    },  
+    {
+      "name": "AUSD",
+      "address": "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a",
+      "symbol": "AUSD",
+      "decimals": 6,
+      "chainId": 143,
+      "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0xe9402c6851719496f64F69eF8B8Cb82099d3Abca/logo.png"
+    },	
+    {
+      "name": "XAUt0",
+      "address": "0x01bFF41798a0BcF287b996046Ca68b395DbC1071",
+      "symbol": "XAUt0",
+      "decimals": 6,
+      "chainId": 143,
+      "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x6edBb19E0e156aF6b8334bc1cD7D0eA878B8eC9A/logo.png"
+    }
+  ]
+}

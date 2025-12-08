@@ -1,92 +1,148 @@
-import { Trans } from '@lingui/macro'
-import { useWeb3React } from '@web3-react/core'
+import React from 'react'
+import styled from 'styled-components/macro'
+import { TYPE } from 'theme'
+import { useTranslation } from 'react-i18next'
+import { ExternalLink } from '../../theme'
 import { AutoColumn } from 'components/Column'
-import { getChainInfoOrDefault } from 'constants/chainInfo'
-import styled from 'styled-components'
-import { ThemedText } from 'theme/components'
-import { ExternalLink } from 'theme/components'
+import Squiggle from '../../assets/images/squiggle.png'
+import Texture from '../../assets/images/sandtexture.webp'
+import { RowBetween } from 'components/Row'
 
 const CTASection = styled.section`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 2fr 1fr;
   gap: 8px;
-  opacity: 0.8;
 
-  ${({ theme }) => theme.deprecated_mediaWidth.deprecated_upToSmall`
+  ${({ theme }) => theme.mediaWidth.upToSmall`
     grid-template-columns: auto;
     grid-template-rows: auto;
   `};
 `
 
-const CTA = styled(ExternalLink)`
-  padding: 16px;
+const CTA1 = styled(ExternalLink)`
+  background-size: 40px 40px;
+  background-image: linear-gradient(to right, ${({ theme }) => theme.bg3} 1px, transparent 1px),
+    linear-gradient(to bottom, ${({ theme }) => theme.bg3} 1px, transparent 1px);
+  background-color: ${({ theme }) => theme.bg2};
+  padding: 32px;
   border-radius: 20px;
+  display: flex;
+  flex-direction: column;
   position: relative;
-  overflow: hidden;
-  border: 1px solid ${({ theme }) => theme.surface3};
+  justify-content: space-between;
+  border: 1px solid ${({ theme }) => theme.bg3};
 
   * {
-    color: ${({ theme }) => theme.neutral1};
+    color: ${({ theme }) => theme.text1};
     text-decoration: none !important;
   }
 
   :hover {
-    border: 1px solid ${({ theme }) => theme.surface3};
-
+    border: 1px solid ${({ theme }) => theme.bg5};
+    background-color: ${({ theme }) => theme.bg2};
     text-decoration: none;
     * {
       text-decoration: none !important;
     }
   }
+
+  ${({ theme }) => theme.mediaWidth.upToMedium`
+   padding: 1rem;
+  `};
 `
 
-const HeaderText = styled(ThemedText.DeprecatedLabel)`
+const CTA2 = styled(ExternalLink)`
+  position: relative;
+  overflow: hidden;
+  padding: 32px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid ${({ theme }) => theme.bg4};
+
+  * {
+    color: ${({ theme }) => theme.text1};
+    text-decoration: none !important;
+  }
+
+  :hover {
+    border: 1px solid ${({ theme }) => theme.bg5};
+    opacity: 0.7;
+    text-decoration: none !important;
+    * {
+      text-decoration: none !important;
+    }
+  }
+
+  :before {
+    content: '';
+    position: absolute;
+    width: 340%;
+    height: 280%;
+    top: -130%;
+    left: -134%;
+    z-index: -1;
+    background: url(${Texture}) 0 0 repeat;
+    transform: rotate(-4deg);
+  }
+`
+
+const HeaderText = styled(TYPE.label)`
   align-items: center;
   display: flex;
-  font-size: 16px;
-  font-weight: 535 !important;
-  ${({ theme }) => theme.deprecated_mediaWidth.deprecated_upToMedium`
-    font-size: 16px;
+  margin-bottom: 24px;
+  font-weight: 400;
+  font-size: 20px;
+  ${({ theme }) => theme.mediaWidth.upToMedium`
+    font-size: 20px;
   `};
 `
 
 const ResponsiveColumn = styled(AutoColumn)`
   grid-template-columns: 1fr;
-  width: 100%;
-  gap: 8px;
-
-  ${({ theme }) => theme.deprecated_mediaWidth.deprecated_upToMedium`
+  gap: 12px;
+  ${({ theme }) => theme.mediaWidth.upToMedium`
     gap: 8px;
   `};
   justify-content: space-between;
 `
 
+const StyledImage = styled.img`
+  height: 114px;
+  margin-top: -28px;
+  ${({ theme }) => theme.mediaWidth.upToMedium`
+    height: 80px;
+    padding-right: 1rem;
+  `};
+`
+
 export default function CTACards() {
-  const { chainId } = useWeb3React()
-  const { infoLink } = getChainInfoOrDefault(chainId)
+  const { t } = useTranslation()
 
   return (
     <CTASection>
-      <CTA href="https://support.uniswap.org/hc/en-us/categories/8122334631437-Providing-Liquidity-">
+      <CTA1 href={'https://docs.uniswap.org/concepts/introduction/liquidity-user-guide'}>
         <ResponsiveColumn>
-          <HeaderText>
-            <Trans>Learn about providing liquidity</Trans> ↗
-          </HeaderText>
-          <ThemedText.DeprecatedBody style={{ alignItems: 'center', display: 'flex', fontWeight: 485 }}>
-            <Trans>Check out our v3 LP walkthrough and migration guides.</Trans>
-          </ThemedText.DeprecatedBody>
+          <HeaderText>{t('Uniswap V3 is here!')}</HeaderText>
+          <TYPE.body fontWeight={300} style={{ alignItems: 'center', display: 'flex', maxWidth: '80%' }}>
+            {t('Check out our v3 LP walkthrough and migration guides.')}
+          </TYPE.body>
+          <RowBetween align="flex-end">
+            <HeaderText>{t('↗')}</HeaderText>
+            <StyledImage src={Squiggle} />
+          </RowBetween>
         </ResponsiveColumn>
-      </CTA>
-      <CTA data-testid="cta-infolink" href={infoLink + 'pools'}>
+      </CTA1>
+      <CTA2 href={'https://info.uniswap.org/#/pools'}>
         <ResponsiveColumn>
-          <HeaderText style={{ alignSelf: 'flex-start' }}>
-            <Trans>Top pools</Trans> ↗
-          </HeaderText>
-          <ThemedText.DeprecatedBody style={{ alignSelf: 'flex-start', fontWeight: 485 }}>
-            <Trans>Explore Uniswap Analytics.</Trans>
-          </ThemedText.DeprecatedBody>
+          <HeaderText style={{ alignSelf: 'flex-start' }}>{t('Top pools')}</HeaderText>
+          <TYPE.body fontWeight={300} style={{ alignSelf: 'flex-start' }}>
+            {t('Explore popular pools on Uniswap Analytics.')}
+          </TYPE.body>
+          <HeaderText style={{ alignSelf: 'flex-end' }}>{t('↗')}</HeaderText>
         </ResponsiveColumn>
-      </CTA>
+      </CTA2>
     </CTASection>
   )
 }

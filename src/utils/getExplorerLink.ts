@@ -1,18 +1,15 @@
-import { ChainId } from '@uniswap/sdk-core'
+import { SupportedChainId } from '../constants/chains'
 
-const BLOCK_EXPLORER_PREFIXES: { [chainId: number]: string } = {
-  [ChainId.MAINNET]: 'https://etherscan.io',
-  [ChainId.GOERLI]: 'https://goerli.etherscan.io',
-  [ChainId.SEPOLIA]: 'https://sepolia.etherscan.io',
-  [ChainId.OPTIMISM]: 'https://optimistic.etherscan.io',
-  [ChainId.OPTIMISM_GOERLI]: 'https://goerli-optimism.etherscan.io',
-  [ChainId.POLYGON]: 'https://polygonscan.com',
-  [ChainId.POLYGON_MUMBAI]: 'https://mumbai.polygonscan.com',
-  [ChainId.CELO]: 'https://celoscan.io',
-  [ChainId.CELO_ALFAJORES]: 'https://alfajores-blockscout.celo-testnet.org',
-  [ChainId.BNB]: 'https://bscscan.com',
-  [ChainId.AVALANCHE]: 'https://snowtrace.io',
-  [ChainId.BASE]: 'https://basescan.org',
+const ETHERSCAN_PREFIXES: { [chainId: number]: string } = {
+  1: '',
+  3: 'ropsten.',
+  4: 'rinkeby.',
+  5: 'goerli.',
+  42: 'kovan.',
+}
+
+const MONAD_URLS: { [chainId: number]: string } = {
+  [SupportedChainId.MONAD]: 'https://monadscan.com',
 }
 
 export enum ExplorerDataType {
@@ -29,52 +26,23 @@ export enum ExplorerDataType {
  * @param type the type of the data
  */
 export function getExplorerLink(chainId: number, data: string, type: ExplorerDataType): string {
-  if (chainId === ChainId.ARBITRUM_ONE) {
-    switch (type) {
-      case ExplorerDataType.TRANSACTION:
-        return `https://arbiscan.io/tx/${data}`
-      case ExplorerDataType.ADDRESS:
-      case ExplorerDataType.TOKEN:
-        return `https://arbiscan.io/address/${data}`
-      case ExplorerDataType.BLOCK:
-        return `https://arbiscan.io/block/${data}`
-      default:
-        return `https://arbiscan.io/`
-    }
-  }
-
-  if (chainId === ChainId.ARBITRUM_GOERLI) {
-    switch (type) {
-      case ExplorerDataType.TRANSACTION:
-        return `https://goerli.arbiscan.io/tx/${data}`
-      case ExplorerDataType.ADDRESS:
-      case ExplorerDataType.TOKEN:
-        return `https://goerli.arbiscan.io/address/${data}`
-      case ExplorerDataType.BLOCK:
-        return `https://goerli.arbiscan.io/block/${data}`
-      default:
-        return `https://goerli.arbiscan.io/`
-    }
-  }
-
-  const prefix = BLOCK_EXPLORER_PREFIXES[chainId] ?? 'https://etherscan.io'
+  // Check if it's a BSC chain
+  const monadUrl = MONAD_URLS[chainId]
+  const prefix = monadUrl || `https://${ETHERSCAN_PREFIXES[chainId] || ETHERSCAN_PREFIXES[1]}etherscan.io`
 
   switch (type) {
-    case ExplorerDataType.TRANSACTION:
+    case ExplorerDataType.TRANSACTION: {
       return `${prefix}/tx/${data}`
-
-    case ExplorerDataType.TOKEN:
+    }
+    case ExplorerDataType.TOKEN: {
       return `${prefix}/token/${data}`
-
-    case ExplorerDataType.BLOCK:
-      if (chainId === ChainId.OPTIMISM || chainId === ChainId.OPTIMISM_GOERLI) {
-        return `${prefix}/tx/${data}`
-      }
+    }
+    case ExplorerDataType.BLOCK: {
       return `${prefix}/block/${data}`
-
+    }
     case ExplorerDataType.ADDRESS:
+    default: {
       return `${prefix}/address/${data}`
-    default:
-      return `${prefix}`
+    }
   }
 }

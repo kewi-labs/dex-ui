@@ -1,79 +1,16 @@
-import { Interface } from '@ethersproject/abi'
-import { BigintIsh, Currency, Token, V3_CORE_FACTORY_ADDRESSES } from '@uniswap/sdk-core'
-import IUniswapV3PoolStateJSON from '@uniswap/v3-core/artifacts/contracts/interfaces/pool/IUniswapV3PoolState.sol/IUniswapV3PoolState.json'
 import { computePoolAddress } from '@uniswap/v3-sdk'
-import { FeeAmount, Pool } from '@uniswap/v3-sdk'
-import { useWeb3React } from '@web3-react/core'
-import JSBI from 'jsbi'
-import { useMultipleContractSingleData } from 'lib/hooks/multicall'
-import { useMemo } from 'react'
-
+import { V3_CORE_FACTORY_ADDRESSES } from '../constants/addresses'
 import { IUniswapV3PoolStateInterface } from '../types/v3/IUniswapV3PoolState'
+import { Token, Currency } from '@uniswap/sdk-core'
+import { useMemo } from 'react'
+import { useActiveWeb3React } from './web3'
+import { useMultipleContractSingleData } from '../state/multicall/hooks'
+import { wrappedCurrency } from '../utils/wrappedCurrency'
+import { Pool, FeeAmount } from '@uniswap/v3-sdk'
+import { abi as IUniswapV3PoolStateABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/pool/IUniswapV3PoolState.sol/IUniswapV3PoolState.json'
+import { Interface } from '@ethersproject/abi'
 
-const POOL_STATE_INTERFACE = new Interface(IUniswapV3PoolStateJSON.abi) as IUniswapV3PoolStateInterface
-
-// Classes are expensive to instantiate, so this caches the recently instantiated pools.
-// This avoids re-instantiating pools as the other pools in the same request are loaded.
-class PoolCache {
-  // Evict after 128 entries. Empirically, a swap uses 64 entries.
-  private static MAX_ENTRIES = 128
-
-  // These are FIFOs, using unshift/pop. This makes recent entries faster to find.
-  private static pools: Pool[] = []
-  private static addresses: { key: string; address: string }[] = []
-
-  static getPoolAddress(factoryAddress: string, tokenA: Token, tokenB: Token, fee: FeeAmount): string {
-    if (this.addresses.length > this.MAX_ENTRIES) {
-      this.addresses = this.addresses.slice(0, this.MAX_ENTRIES / 2)
-    }
-
-    const { address: addressA } = tokenA
-    const { address: addressB } = tokenB
-    const key = `${factoryAddress}:${addressA}:${addressB}:${fee.toString()}`
-    const found = this.addresses.find((address) => address.key === key)
-    if (found) return found.address
-
-    const address = {
-      key,
-      address: computePoolAddress({
-        factoryAddress,
-        tokenA,
-        tokenB,
-        fee,
-      }),
-    }
-    this.addresses.unshift(address)
-    return address.address
-  }
-
-  static getPool(
-    tokenA: Token,
-    tokenB: Token,
-    fee: FeeAmount,
-    sqrtPriceX96: BigintIsh,
-    liquidity: BigintIsh,
-    tick: number
-  ): Pool {
-    if (this.pools.length > this.MAX_ENTRIES) {
-      this.pools = this.pools.slice(0, this.MAX_ENTRIES / 2)
-    }
-
-    const found = this.pools.find(
-      (pool) =>
-        pool.token0 === tokenA &&
-        pool.token1 === tokenB &&
-        pool.fee === fee &&
-        JSBI.EQ(pool.sqrtRatioX96, sqrtPriceX96) &&
-        JSBI.EQ(pool.liquidity, liquidity) &&
-        pool.tickCurrent === tick
-    )
-    if (found) return found
-
-    const pool = new Pool(tokenA, tokenB, fee, sqrtPriceX96, liquidity, tick)
-    this.pools.unshift(pool)
-    return pool
-  }
-}
+const POOL_STATE_INTERFACE = new Interface(IUniswapV3PoolStateABI) as IUniswapV3PoolStateInterface
 
 export enum PoolState {
   LOADING,
@@ -82,62 +19,63 @@ export enum PoolState {
   INVALID,
 }
 
-function usePools(
+export function usePools(
   poolKeys: [Currency | undefined, Currency | undefined, FeeAmount | undefined][]
 ): [PoolState, Pool | null][] {
-  const { chainId } = useWeb3React()
+  const { chainId } = useActiveWeb3React()
 
-  const poolTokens: ([Token, Token, FeeAmount] | undefined)[] = useMemo(() => {
-    if (!chainId) return new Array(poolKeys.length)
-
+  const transformed: ([Token, Token, FeeAmount] | null)[] = useMemo(() => {
     return poolKeys.map(([currencyA, currencyB, feeAmount]) => {
-      if (currencyA && currencyB && feeAmount) {
-        const tokenA = currencyA.wrapped
-        const tokenB = currencyB.wrapped
-        if (tokenA.equals(tokenB)) return undefined
+      if (!chainId || !currencyA || !currencyB || !feeAmount) return null
 
-        return tokenA.sortsBefore(tokenB) ? [tokenA, tokenB, feeAmount] : [tokenB, tokenA, feeAmount]
-      }
-      return undefined
+      const tokenA = wrappedCurrency(currencyA, chainId)
+      const tokenB = wrappedCurrency(currencyB, chainId)
+      if (!tokenA || !tokenB || tokenA.equals(tokenB)) return null
+      const [token0, token1] = tokenA.sortsBefore(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA]
+      return [token0, token1, feeAmount]
     })
   }, [chainId, poolKeys])
 
   const poolAddresses: (string | undefined)[] = useMemo(() => {
     const v3CoreFactoryAddress = chainId && V3_CORE_FACTORY_ADDRESSES[chainId]
-    if (!v3CoreFactoryAddress) return new Array(poolTokens.length)
 
-    return poolTokens.map((value) => value && PoolCache.getPoolAddress(v3CoreFactoryAddress, ...value))
-  }, [chainId, poolTokens])
+    return transformed.map((value) => {
+      if (!v3CoreFactoryAddress || !value) return undefined
+      return computePoolAddress({
+        factoryAddress: v3CoreFactoryAddress,
+        tokenA: value[0],
+        tokenB: value[1],
+        fee: value[2],
+      })
+    })
+  }, [chainId, transformed])
 
   const slot0s = useMultipleContractSingleData(poolAddresses, POOL_STATE_INTERFACE, 'slot0')
   const liquidities = useMultipleContractSingleData(poolAddresses, POOL_STATE_INTERFACE, 'liquidity')
 
   return useMemo(() => {
     return poolKeys.map((_key, index) => {
-      const tokens = poolTokens[index]
-      if (!tokens) return [PoolState.INVALID, null]
-      const [token0, token1, fee] = tokens
+      const [token0, token1, fee] = transformed[index] ?? []
+      if (!token0 || !token1 || !fee) return [PoolState.INVALID, null]
 
-      if (!slot0s[index]) return [PoolState.INVALID, null]
       const { result: slot0, loading: slot0Loading, valid: slot0Valid } = slot0s[index]
-
-      if (!liquidities[index]) return [PoolState.INVALID, null]
       const { result: liquidity, loading: liquidityLoading, valid: liquidityValid } = liquidities[index]
 
-      if (!tokens || !slot0Valid || !liquidityValid) return [PoolState.INVALID, null]
+      if (!slot0Valid || !liquidityValid) return [PoolState.INVALID, null]
       if (slot0Loading || liquidityLoading) return [PoolState.LOADING, null]
+
       if (!slot0 || !liquidity) return [PoolState.NOT_EXISTS, null]
+
       if (!slot0.sqrtPriceX96 || slot0.sqrtPriceX96.eq(0)) return [PoolState.NOT_EXISTS, null]
 
       try {
-        const pool = PoolCache.getPool(token0, token1, fee, slot0.sqrtPriceX96, liquidity[0], slot0.tick)
-        return [PoolState.EXISTS, pool]
+        return [PoolState.EXISTS, new Pool(token0, token1, fee, slot0.sqrtPriceX96, liquidity[0], slot0.tick)]
       } catch (error) {
         console.error('Error when constructing the pool', error)
         return [PoolState.NOT_EXISTS, null]
       }
     })
-  }, [liquidities, poolKeys, slot0s, poolTokens])
+  }, [liquidities, poolKeys, slot0s, transformed])
 }
 
 export function usePool(

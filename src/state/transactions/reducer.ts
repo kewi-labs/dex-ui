@@ -1,53 +1,49 @@
-import { createSlice } from '@reduxjs/toolkit'
-import { ChainId } from '@uniswap/sdk-core'
+import { createReducer } from '@reduxjs/toolkit'
+import {
+  addTransaction,
+  checkedTransaction,
+  clearAllTransactions,
+  finalizeTransaction,
+  SerializableTransactionReceipt,
+} from './actions'
 
-import { SerializableTransactionReceipt, TransactionDetails, TransactionInfo } from './types'
+const now = () => new Date().getTime()
 
-// TODO(WEB-2053): update this to be a map of account -> chainId -> txHash -> TransactionDetails
-// to simplify usage, once we're able to invalidate localstorage
+export interface TransactionDetails {
+  hash: string
+  approval?: { tokenAddress: string; spender: string }
+  summary?: string
+  claim?: { recipient: string }
+  receipt?: SerializableTransactionReceipt
+  lastCheckedBlockNumber?: number
+  addedTime: number
+  confirmedTime?: number
+  from: string
+}
+
 export interface TransactionState {
   [chainId: number]: {
     [txHash: string]: TransactionDetails
   }
 }
 
-interface AddTransactionPayload {
-  chainId: ChainId
-  from: string
-  hash: string
-  info: TransactionInfo
-  nonce?: number
-  deadline?: number
-  receipt?: SerializableTransactionReceipt
-}
-
 export const initialState: TransactionState = {}
 
-const transactionSlice = createSlice({
-  name: 'transactions',
-  initialState,
-  reducers: {
-    addTransaction(
-      transactions,
-      { payload: { chainId, from, hash, info, nonce, deadline, receipt } }: { payload: AddTransactionPayload }
-    ) {
+export default createReducer(initialState, (builder) =>
+  builder
+    .addCase(addTransaction, (transactions, { payload: { chainId, from, hash, approval, summary, claim } }) => {
       if (transactions[chainId]?.[hash]) {
         throw Error('Attempted to add existing transaction.')
       }
       const txs = transactions[chainId] ?? {}
-      txs[hash] = { hash, info, from, addedTime: Date.now(), nonce, deadline, receipt }
+      txs[hash] = { hash, approval, summary, claim, from, addedTime: now() }
       transactions[chainId] = txs
-    },
-    clearAllTransactions(transactions, { payload: { chainId } }) {
+    })
+    .addCase(clearAllTransactions, (transactions, { payload: { chainId } }) => {
       if (!transactions[chainId]) return
       transactions[chainId] = {}
-    },
-    removeTransaction(transactions, { payload: { chainId, hash } }) {
-      if (transactions[chainId][hash]) {
-        delete transactions[chainId][hash]
-      }
-    },
-    checkedTransaction(transactions, { payload: { chainId, hash, blockNumber } }) {
+    })
+    .addCase(checkedTransaction, (transactions, { payload: { chainId, hash, blockNumber } }) => {
       const tx = transactions[chainId]?.[hash]
       if (!tx) {
         return
@@ -57,36 +53,13 @@ const transactionSlice = createSlice({
       } else {
         tx.lastCheckedBlockNumber = Math.max(blockNumber, tx.lastCheckedBlockNumber)
       }
-    },
-    finalizeTransaction(transactions, { payload: { hash, chainId, receipt } }) {
+    })
+    .addCase(finalizeTransaction, (transactions, { payload: { hash, chainId, receipt } }) => {
       const tx = transactions[chainId]?.[hash]
       if (!tx) {
         return
       }
       tx.receipt = receipt
-      tx.confirmedTime = Date.now()
-    },
-    cancelTransaction(transactions, { payload: { hash, chainId, cancelHash } }) {
-      const tx = transactions[chainId]?.[hash]
-
-      if (tx) {
-        delete transactions[chainId]?.[hash]
-        transactions[chainId][cancelHash] = {
-          ...tx,
-          hash: cancelHash,
-          cancelled: true,
-        }
-      }
-    },
-  },
-})
-
-export const {
-  addTransaction,
-  clearAllTransactions,
-  checkedTransaction,
-  finalizeTransaction,
-  removeTransaction,
-  cancelTransaction,
-} = transactionSlice.actions
-export default transactionSlice.reducer
+      tx.confirmedTime = now()
+    })
+)

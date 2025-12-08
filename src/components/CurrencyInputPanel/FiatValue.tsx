@@ -1,63 +1,34 @@
-import { Trans } from '@lingui/macro'
-import { Percent } from '@uniswap/sdk-core'
-import Row from 'components/Row'
-import { LoadingBubble } from 'components/Tokens/loading'
-import { MouseoverTooltip } from 'components/Tooltip'
-import { useMemo } from 'react'
-import styled from 'styled-components'
-import { ThemedText } from 'theme/components'
-import { NumberType, useFormatter } from 'utils/formatNumbers'
-import { warningSeverity } from 'utils/prices'
-
-const FiatLoadingBubble = styled(LoadingBubble)`
-  border-radius: 4px;
-  width: 4rem;
-  height: 1rem;
-`
+import { Currency, CurrencyAmount, Percent } from '@uniswap/sdk-core'
+import React, { useMemo } from 'react'
+import useTheme from '../../hooks/useTheme'
+import { TYPE } from '../../theme'
+import { warningSeverity } from '../../utils/prices'
+import HoverInlineText from 'components/HoverInlineText'
 
 export function FiatValue({
   fiatValue,
   priceImpact,
 }: {
-  fiatValue: { data?: number; isLoading: boolean }
+  fiatValue: CurrencyAmount<Currency> | null | undefined
   priceImpact?: Percent
 }) {
-  const { formatNumber, formatPriceImpact } = useFormatter()
-
+  const theme = useTheme()
   const priceImpactColor = useMemo(() => {
     if (!priceImpact) return undefined
-    if (priceImpact.lessThan('0')) return 'success'
+    if (priceImpact.lessThan('0')) return theme.green1
     const severity = warningSeverity(priceImpact)
-    if (severity < 1) return 'neutral3'
-    if (severity < 3) return 'deprecated_yellow1'
-    return 'critical'
-  }, [priceImpact])
-
-  if (fiatValue.isLoading) {
-    return <FiatLoadingBubble />
-  }
+    if (severity < 1) return theme.text4
+    if (severity < 3) return theme.yellow1
+    return theme.red1
+  }, [priceImpact, theme.green1, theme.red1, theme.text4, theme.yellow1])
 
   return (
-    <Row gap="sm">
-      <ThemedText.BodySmall color="neutral2">
-        {fiatValue.data ? (
-          formatNumber({
-            input: fiatValue.data,
-            type: NumberType.FiatTokenPrice,
-          })
-        ) : (
-          <MouseoverTooltip text={<Trans>Not enough liquidity to show accurate USD value.</Trans>}>-</MouseoverTooltip>
-        )}
-      </ThemedText.BodySmall>
-      {priceImpact && (
-        <ThemedText.BodySmall color={priceImpactColor}>
-          <MouseoverTooltip
-            text={<Trans>The estimated difference between the USD values of input and output amounts.</Trans>}
-          >
-            (<Trans>{formatPriceImpact(priceImpact)}</Trans>)
-          </MouseoverTooltip>
-        </ThemedText.BodySmall>
-      )}
-    </Row>
+    <TYPE.body fontSize={14} color={fiatValue ? theme.text2 : theme.text4}>
+      {fiatValue ? '~' : ''}$
+      <HoverInlineText text={fiatValue ? fiatValue?.toSignificant(6, { groupSeparator: ',' }) : '-'} />{' '}
+      {priceImpact ? (
+        <span style={{ color: priceImpactColor }}> ({priceImpact.multiply(-1).toSignificant(3)}%)</span>
+      ) : null}
+    </TYPE.body>
   )
 }

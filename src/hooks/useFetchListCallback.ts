@@ -1,34 +1,50 @@
 import { nanoid } from '@reduxjs/toolkit'
 import { ChainId } from '@uniswap/sdk-core'
 import { TokenList } from '@uniswap/token-lists'
-import { useWeb3React } from '@web3-react/core'
-import { RPC_PROVIDERS } from 'constants/providers'
-import getTokenList from 'lib/hooks/useTokenList/fetchTokenList'
-import resolveENSContentHash from 'lib/utils/resolveENSContentHash'
 import { useCallback } from 'react'
-import { useAppDispatch } from 'state/hooks'
-
+import { useDispatch } from 'react-redux'
+import { getNetworkLibrary } from '../connectors'
+import { AppDispatch } from '../state'
 import { fetchTokenList } from '../state/lists/actions'
+import getTokenList from '../utils/getTokenList'
+import resolveENSContentHash from '../utils/resolveENSContentHash'
+import { useActiveWeb3React } from './web3'
 
-export function useFetchListCallback(): (listUrl: string, skipValidation?: boolean) => Promise<TokenList> {
-  const dispatch = useAppDispatch()
-  const { provider, chainId } = useWeb3React()
-  const mainnetProvider = chainId === ChainId.MAINNET && provider ? provider : RPC_PROVIDERS[ChainId.MAINNET]
+export function useFetchListCallback(): (listUrl: string, sendDispatch?: boolean) => Promise<TokenList> {
+  const { chainId, library } = useActiveWeb3React()
+  const dispatch = useDispatch<AppDispatch>()
+
+  const ensResolver = useCallback(
+    async (ensName: string) => {
+      if (!library || chainId !== ChainId.MAINNET) {
+        const networkLibrary = getNetworkLibrary()
+        const network = await networkLibrary.getNetwork()
+        if (networkLibrary && network.chainId === ChainId.MAINNET) {
+          return resolveENSContentHash(ensName, networkLibrary)
+        }
+        throw new Error('Could not construct mainnet ENS resolver')
+      }
+      return resolveENSContentHash(ensName, library)
+    },
+    [chainId, library]
+  )
+
+  // note: prevent dispatch if using for list search or unsupported list
   return useCallback(
-    async (listUrl: string, skipValidation?: boolean) => {
+    async (listUrl: string, sendDispatch = true) => {
       const requestId = nanoid()
-      dispatch(fetchTokenList.pending({ requestId, url: listUrl }))
-      return getTokenList(listUrl, (ensName: string) => resolveENSContentHash(ensName, mainnetProvider), skipValidation)
+      sendDispatch && dispatch(fetchTokenList.pending({ requestId, url: listUrl }))
+      return getTokenList(listUrl, ensResolver)
         .then((tokenList) => {
-          dispatch(fetchTokenList.fulfilled({ url: listUrl, tokenList, requestId }))
+          sendDispatch && dispatch(fetchTokenList.fulfilled({ url: listUrl, tokenList, requestId }))
           return tokenList
         })
         .catch((error) => {
           console.debug(`Failed to get list at url ${listUrl}`, error)
-          dispatch(fetchTokenList.rejected({ url: listUrl, requestId, errorMessage: error.message }))
+          sendDispatch && dispatch(fetchTokenList.rejected({ url: listUrl, requestId, errorMessage: error.message }))
           throw error
         })
     },
-    [dispatch, mainnetProvider]
+    [dispatch, ensResolver]
   )
 }

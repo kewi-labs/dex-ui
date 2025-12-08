@@ -1,9 +1,6 @@
 import { BigNumber } from '@ethersproject/bignumber'
 
-/**
- * Returns the gas value plus a margin for unexpected or variable gas costs
- * @param value the gas value to pad
- */
+// add 20%
 export function calculateGasMargin(value: BigNumber): BigNumber {
-  return value.mul(120).div(100)
+  return value.mul(BigNumber.from(10000 + 2000)).div(BigNumber.from(10000))
 }

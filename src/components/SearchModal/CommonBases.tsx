@@ -1,30 +1,29 @@
-import { Currency } from '@uniswap/sdk-core'
-import CurrencyLogo from 'components/Logo/CurrencyLogo'
-import { AutoRow } from 'components/Row'
-import { COMMON_BASES } from 'constants/routing'
-import { useTokenInfoFromActiveList } from 'hooks/useTokenInfoFromActiveList'
+import React from 'react'
 import { Text } from 'rebass'
-import styled from 'styled-components'
-import { currencyId } from 'utils/currencyId'
+import { ChainId, Currency, currencyEquals, Token, ETHER } from '@uniswap/sdk-core'
+import { getNativeSymbol } from '../../utils/getNativeSymbol'
+import styled from 'styled-components/macro'
+
+import { SUGGESTED_BASES } from '../../constants/routing'
+import { AutoColumn } from '../Column'
+import QuestionHelper from '../QuestionHelper'
+import { AutoRow } from '../Row'
+import CurrencyLogo from '../CurrencyLogo'
 
 const BaseWrapper = styled.div<{ disable?: boolean }>`
-  border: 1px solid ${({ theme }) => theme.surface3};
-  border-radius: 18px;
+  border: 1px solid ${({ theme, disable }) => (disable ? 'transparent' : theme.bg3)};
+  border-radius: 10px;
   display: flex;
   padding: 6px;
-  padding-top: 5px;
-  padding-bottom: 5px;
-  padding-right: 12px;
-  line-height: 0px;
 
   align-items: center;
   :hover {
     cursor: ${({ disable }) => !disable && 'pointer'};
-    background-color: ${({ theme }) => theme.deprecated_hoverDefault};
+    background-color: ${({ theme, disable }) => !disable && theme.bg2};
   }
 
-  color: ${({ theme, disable }) => disable && theme.neutral1};
-  background-color: ${({ theme, disable }) => disable && theme.surface3};
+  background-color: ${({ theme, disable }) => disable && theme.bg3};
+  opacity: ${({ disable }) => disable && '0.4'};
 `
 
 export default function CommonBases({
@@ -32,40 +31,44 @@ export default function CommonBases({
   onSelect,
   selectedCurrency,
 }: {
-  chainId?: number
+  chainId?: ChainId
   selectedCurrency?: Currency | null
   onSelect: (currency: Currency) => void
 }) {
-  const bases = chainId !== undefined ? COMMON_BASES[chainId] ?? [] : []
-
-  return bases.length > 0 ? (
-    <AutoRow gap="4px">
-      {bases.map((currency: Currency) => {
-        const isSelected = selectedCurrency?.equals(currency)
-
-        return (
-          <BaseWrapper
-            tabIndex={0}
-            onKeyPress={(e) => !isSelected && e.key === 'Enter' && onSelect(currency)}
-            onClick={() => !isSelected && onSelect(currency)}
-            disable={isSelected}
-            key={currencyId(currency)}
-            data-testid={`common-base-${currency.symbol}`}
-          >
-            <CurrencyLogoFromList currency={currency} />
-            <Text fontWeight={535} fontSize={16} lineHeight="16px">
-              {currency.symbol}
-            </Text>
-          </BaseWrapper>
-        )
-      })}
-    </AutoRow>
-  ) : null
-}
-
-/** helper component to retrieve a base currency from the active token lists */
-function CurrencyLogoFromList({ currency }: { currency: Currency }) {
-  const token = useTokenInfoFromActiveList(currency)
-
-  return <CurrencyLogo currency={token} style={{ marginRight: 8 }} />
+  return (
+    <AutoColumn gap="md">
+      <AutoRow>
+        <Text fontWeight={500} fontSize={14}>
+          Common bases
+        </Text>
+        <QuestionHelper text="These tokens are commonly paired with other tokens." />
+      </AutoRow>
+      <AutoRow gap="4px">
+        <BaseWrapper
+          onClick={() => {
+            if (!selectedCurrency || !currencyEquals(selectedCurrency, ETHER)) {
+              onSelect(ETHER)
+            }
+          }}
+          disable={selectedCurrency?.isEther}
+        >
+          <CurrencyLogo currency={ETHER} style={{ marginRight: 8 }} />
+          <Text fontWeight={500} fontSize={16}>
+            {getNativeSymbol(chainId)}
+          </Text>
+        </BaseWrapper>
+        {(typeof chainId === 'number' ? (SUGGESTED_BASES as any)[chainId] ?? [] : []).map((token: Token) => {
+          const selected = selectedCurrency?.isToken && selectedCurrency.address === token.address
+          return (
+            <BaseWrapper onClick={() => !selected && onSelect(token)} disable={selected} key={token.address}>
+              <CurrencyLogo currency={token} style={{ marginRight: 8 }} />
+              <Text fontWeight={500} fontSize={16}>
+                {token.symbol}
+              </Text>
+            </BaseWrapper>
+          )
+        })}
+      </AutoRow>
+    </AutoColumn>
+  )
 }

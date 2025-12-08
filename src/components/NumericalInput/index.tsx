@@ -1,20 +1,17 @@
-import { SupportedLocale } from 'constants/locales'
-import React, { forwardRef } from 'react'
-import styled from 'styled-components'
-import { escapeRegExp } from 'utils'
-import { useFormatterLocales } from 'utils/formatNumbers'
+import React from 'react'
+import styled from 'styled-components/macro'
+import { escapeRegExp } from '../../utils'
 
-const StyledInput = styled.input<{ error?: boolean; fontSize?: string; align?: string; disabled?: boolean }>`
-  color: ${({ error, theme }) => (error ? theme.critical : theme.neutral1)};
-  pointer-events: ${({ disabled }) => (disabled ? 'none' : 'auto')};
+const StyledInput = styled.input<{ error?: boolean; fontSize?: string; align?: string }>`
+  color: ${({ error, theme }) => (error ? theme.red1 : theme.text1)};
   width: 0;
   position: relative;
-  font-weight: 485;
+  font-weight: 500;
   outline: none;
   border: none;
   flex: 1 1 auto;
-  background-color: transparent;
-  font-size: ${({ fontSize }) => fontSize ?? '28px'};
+  background-color: ${({ theme }) => theme.bg1};
+  font-size: ${({ fontSize }) => fontSize ?? '24px'};
   text-align: ${({ align }) => align && align};
   white-space: nowrap;
   overflow: hidden;
@@ -37,82 +34,66 @@ const StyledInput = styled.input<{ error?: boolean; fontSize?: string; align?: s
   }
 
   ::placeholder {
-    color: ${({ theme }) => theme.neutral3};
+    color: ${({ theme }) => theme.text4};
   }
 `
 
-function localeUsesComma(locale: SupportedLocale): boolean {
-  const decimalSeparator = new Intl.NumberFormat(locale).format(1.1)[1]
-
-  return decimalSeparator === ','
-}
-
 const inputRegex = RegExp(`^\\d*(?:\\\\[.])?\\d*$`) // match escaped "." characters via in a non-capturing group
 
-interface InputProps extends Omit<React.HTMLProps<HTMLInputElement>, 'ref' | 'onChange' | 'as'> {
+export const Input = React.memo(function InnerInput({
+  value,
+  onUserInput,
+  placeholder,
+  prependSymbol,
+  ...rest
+}: {
   value: string | number
   onUserInput: (input: string) => void
   error?: boolean
   fontSize?: string
   align?: 'right' | 'left'
-  prependSymbol?: string
-}
-
-const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ value, onUserInput, placeholder, prependSymbol, ...rest }: InputProps, ref) => {
-    const { formatterLocale } = useFormatterLocales()
-
-    const enforcer = (nextUserInput: string) => {
-      if (nextUserInput === '' || inputRegex.test(escapeRegExp(nextUserInput))) {
-        onUserInput(nextUserInput)
-      }
+  prependSymbol?: string | undefined
+} & Omit<React.HTMLProps<HTMLInputElement>, 'ref' | 'onChange' | 'as'>) {
+  const enforcer = (nextUserInput: string) => {
+    if (nextUserInput === '' || inputRegex.test(escapeRegExp(nextUserInput))) {
+      onUserInput(nextUserInput)
     }
-
-    const formatValueWithLocale = (value: string | number) => {
-      const [searchValue, replaceValue] = localeUsesComma(formatterLocale) ? [/\./g, ','] : [/,/g, '.']
-      return value.toString().replace(searchValue, replaceValue)
-    }
-
-    const valueFormattedWithLocale = formatValueWithLocale(value)
-
-    return (
-      <StyledInput
-        {...rest}
-        ref={ref}
-        value={prependSymbol && value ? prependSymbol + valueFormattedWithLocale : valueFormattedWithLocale}
-        onChange={(event) => {
-          if (prependSymbol) {
-            const value = event.target.value
-
-            // cut off prepended symbol
-            const formattedValue = value.toString().includes(prependSymbol)
-              ? value.toString().slice(1, value.toString().length + 1)
-              : value
-
-            // replace commas with periods, because uniswap exclusively uses period as the decimal separator
-            enforcer(formattedValue.replace(/,/g, '.'))
-          } else {
-            enforcer(event.target.value.replace(/,/g, '.'))
-          }
-        }}
-        // universal input options
-        inputMode="decimal"
-        autoComplete="off"
-        autoCorrect="off"
-        // text-specific options
-        type="text"
-        pattern="^[0-9]*[.,]?[0-9]*$"
-        placeholder={placeholder || '0'}
-        minLength={1}
-        maxLength={79}
-        spellCheck="false"
-      />
-    )
   }
-)
 
-Input.displayName = 'Input'
+  return (
+    <StyledInput
+      {...rest}
+      value={prependSymbol && value ? prependSymbol + value : value}
+      onChange={(event) => {
+        if (prependSymbol) {
+          const value = event.target.value
 
-const MemoizedInput = React.memo(Input)
-export { MemoizedInput as Input }
+          // cut off prepended symbol
+          const formattedValue = value.toString().includes(prependSymbol)
+            ? value.toString().slice(1, value.toString().length + 1)
+            : value
+
+          // replace commas with periods, because uniswap exclusively uses period as the decimal separator
+          enforcer(formattedValue.replace(/,/g, '.'))
+        } else {
+          enforcer(event.target.value.replace(/,/g, '.'))
+        }
+      }}
+      // universal input options
+      inputMode="decimal"
+      autoComplete="off"
+      autoCorrect="off"
+      // text-specific options
+      type="text"
+      pattern="^[0-9]*[.,]?[0-9]*$"
+      placeholder={placeholder || '0.0'}
+      minLength={1}
+      maxLength={79}
+      spellCheck="false"
+    />
+  )
+})
+
+export default Input
+
 // const inputRegex = RegExp(`^\\d*(?:\\\\[.])?\\d*$`) // match escaped "." characters via in a non-capturing group

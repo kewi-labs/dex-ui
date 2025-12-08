@@ -1,213 +1,182 @@
-import { Trans } from '@lingui/macro'
-import { ButtonLight, SmallButtonPrimary } from 'components/Button'
-import { ChevronUpIcon } from 'nft/components/icons'
-import { useIsMobile } from 'nft/hooks'
-import React, { Component, ErrorInfo, ReactNode, useState } from 'react'
-import { Copy } from 'react-feather'
-import styled from 'styled-components'
-import { CopyToClipboard, ExternalLink, ThemedText } from 'theme/components'
-
-import { Column } from '../Column'
+import React, { ErrorInfo } from 'react'
+import store, { AppState } from '../../state'
+import { ExternalLink, ThemedBackground, TYPE } from '../../theme'
+import { AutoColumn } from '../Column'
+import styled from 'styled-components/macro'
+import ReactGA from 'react-ga'
+import { getUserAgent } from '../../utils/getUserAgent'
+import { AutoRow } from '../Row'
 
 const FallbackWrapper = styled.div`
   display: flex;
-  width: 100vw;
-  height: 100vh;
+  flex-direction: column;
+  width: 100%;
+  align-items: center;
+  z-index: 1;
 `
 
 const BodyWrapper = styled.div<{ margin?: string }>`
-  width: 100%;
-  max-width: 500px;
-  margin: auto;
   padding: 1rem;
-`
-
-const SmallButtonLight = styled(ButtonLight)`
-  font-size: 16px;
-  padding: 10px 16px;
-  border-radius: 12px;
-`
-
-const StretchedRow = styled.div`
-  display: flex;
-  gap: 24px;
-
-  > * {
-    display: flex;
-    flex: 1;
-  }
-`
-
-const Code = styled.code`
-  font-weight: 485;
-  font-size: 12px;
-  line-height: 16px;
-  word-wrap: break-word;
   width: 100%;
-  color: ${({ theme }) => theme.neutral1};
-  font-family: ${({ theme }) => theme.fonts.code};
-  overflow: scroll;
-  max-height: calc(100vh - 450px);
-`
-
-const Separator = styled.div`
-  border-bottom: 1px solid ${({ theme }) => theme.surface3};
+  white-space: ;
 `
 
 const CodeBlockWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  background: ${({ theme }) => theme.surface2};
+  background: ${({ theme }) => theme.bg0};
+  overflow: auto;
+  white-space: pre;
   box-shadow: 0px 0px 1px rgba(0, 0, 0, 0.01), 0px 4px 8px rgba(0, 0, 0, 0.04), 0px 16px 24px rgba(0, 0, 0, 0.04),
     0px 24px 32px rgba(0, 0, 0, 0.01);
   border-radius: 24px;
-  padding: 24px;
-  gap: 10px;
-  color: ${({ theme }) => theme.neutral1};
+  padding: 18px 24px;
+  color: ${({ theme }) => theme.text1};
 `
 
-const ShowMoreButton = styled.div`
-  display: flex;
-  cursor: pointer;
-  justify-content: space-between;
+const LinkWrapper = styled.div`
+  color: ${({ theme }) => theme.blue1};
+  padding: 6px 24px;
 `
 
-const CopyIcon = styled(Copy)`
-  stroke: ${({ theme }) => theme.neutral2};
+const SomethingWentWrongWrapper = styled.div`
+  padding: 6px 24px;
 `
 
-const ShowMoreIcon = styled(ChevronUpIcon)<{ $isExpanded?: boolean }>`
-  transform: ${({ $isExpanded }) => ($isExpanded ? 'none' : 'rotate(180deg)')};
-`
-
-const CodeTitle = styled.div`
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  justify-content: space-between;
-  word-break: break-word;
-`
-
-const Fallback = ({ error }: { error: Error }) => {
-  const [isExpanded, setExpanded] = useState(false)
-  const isMobile = useIsMobile()
-
-  // @todo: ThemedText components should be responsive by default
-  const [Title, Description] = isMobile
-    ? [ThemedText.HeadlineSmall, ThemedText.BodySmall]
-    : [ThemedText.HeadlineLarge, ThemedText.BodySecondary]
-
-  const showMoreButton = (
-    <ShowMoreButton onClick={() => setExpanded((s) => !s)}>
-      <ThemedText.Link color="neutral2">
-        <Trans>{isExpanded ? 'Show less' : 'Show more'}</Trans>
-      </ThemedText.Link>
-      <ShowMoreIcon $isExpanded={isExpanded} secondaryWidth="20" secondaryHeight="20" />
-    </ShowMoreButton>
-  )
-
-  const errorDetails = error.stack || error.message
-
-  return (
-    <FallbackWrapper>
-      <BodyWrapper>
-        <Column gap="xl">
-          <>
-            <Column gap="sm">
-              <Title textAlign="center">
-                <Trans>Something went wrong</Trans>
-              </Title>
-              <Description textAlign="center" color="neutral2">
-                <Trans>
-                  Sorry, an error occured while processing your request. If you request support, be sure to copy the
-                  details of this error.
-                </Trans>
-              </Description>
-            </Column>
-            <CodeBlockWrapper>
-              <CodeTitle>
-                <ThemedText.SubHeader>Error details</ThemedText.SubHeader>
-                <CopyToClipboard toCopy={errorDetails}>
-                  <CopyIcon />
-                </CopyToClipboard>
-              </CodeTitle>
-              <Separator />
-              <Code>{errorDetails.split('\n').slice(0, isExpanded ? undefined : 4)}</Code>
-              <Separator />
-              {showMoreButton}
-            </CodeBlockWrapper>
-          </>
-          <StretchedRow>
-            <SmallButtonPrimary onClick={() => window.location.reload()}>
-              <Trans>Reload the app</Trans>
-            </SmallButtonPrimary>
-            <ExternalLink id="get-support-on-discord" href="https://discord.com/invite/aCSKcvf5VW" target="_blank">
-              <SmallButtonLight>
-                <Trans>Get support</Trans>
-              </SmallButtonLight>
-            </ExternalLink>
-          </StretchedRow>
-        </Column>
-      </BodyWrapper>
-    </FallbackWrapper>
-  )
+type ErrorBoundaryState = {
+  error: Error | null
 }
 
-async function updateServiceWorker(): Promise<ServiceWorkerRegistration> {
-  const ready = await navigator.serviceWorker.ready
-  // the return type of update is incorrectly typed as Promise<void>. See
-  // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration/update
-  return ready.update() as unknown as Promise<ServiceWorkerRegistration>
-}
-
-const updateServiceWorkerInBackground = async () => {
-  try {
-    const registration = await updateServiceWorker()
-
-    // We want to refresh only if we detect a new service worker is waiting to be activated.
-    // See details about it: https://web.dev/service-worker-lifecycle/
-    if (registration?.waiting) {
-      await registration.unregister()
-
-      // Makes Workbox call skipWaiting().
-      // For more info on skipWaiting see: https://web.dev/service-worker-lifecycle/#skip-the-waiting-phase
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' })
-    }
-  } catch (error) {
-    console.error('Failed to update service worker', error)
-  }
-}
-
-interface Props {
-  children?: ReactNode
-}
-
-interface State {
-  error?: Error
-}
-
-export default class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    error: undefined,
-  }
-  constructor(props: Props) {
+export default class ErrorBoundary extends React.Component<unknown, ErrorBoundaryState> {
+  constructor(props: unknown) {
     super(props)
-    this.state = { error: undefined }
+    this.state = { error: null }
   }
 
-  static getDerivedStateFromError(error: Error) {
-    // Update state so the next render will show the fallback UI.
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error }
   }
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    updateServiceWorkerInBackground()
-    console.error('Uncaught error:', error, errorInfo)
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    ReactGA.exception({
+      ...error,
+      ...errorInfo,
+      fatal: true,
+    })
   }
 
   render() {
-    if (this.state.error) {
-      return <Fallback error={this.state.error} />
+    const { error } = this.state
+    if (error !== null) {
+      const encodedBody = encodeURIComponent(issueBody(error))
+      return (
+        <FallbackWrapper>
+          <ThemedBackground />
+          <BodyWrapper>
+            <AutoColumn gap={'md'}>
+              <SomethingWentWrongWrapper>
+                <TYPE.label fontSize={24} fontWeight={600}>
+                  Something went wrong
+                </TYPE.label>
+              </SomethingWentWrongWrapper>
+              <CodeBlockWrapper>
+                <code>
+                  <TYPE.main fontSize={10}>{error.stack}</TYPE.main>
+                </code>
+              </CodeBlockWrapper>
+              <AutoRow>
+                <LinkWrapper>
+                  <ExternalLink
+                    id="create-github-issue-link"
+                    href={`https://github.com/Uniswap/uniswap-interface/issues/new?assignees=&labels=bug&body=${encodedBody}&title=${encodeURIComponent(
+                      `Crash report: \`${error.name}${error.message && `: ${error.message}`}\``
+                    )}`}
+                    target="_blank"
+                  >
+                    <TYPE.link fontSize={16}>
+                      Create an issue on GitHub
+                      <span>↗</span>
+                    </TYPE.link>
+                  </ExternalLink>
+                </LinkWrapper>
+                <LinkWrapper>
+                  <ExternalLink id="get-support-on-discord" href="https://discord.gg/FCfyBSbCU5" target="_blank">
+                    <TYPE.link fontSize={16}>
+                      Get support on Discord
+                      <span>↗</span>
+                    </TYPE.link>
+                  </ExternalLink>
+                </LinkWrapper>
+              </AutoRow>
+            </AutoColumn>
+          </BodyWrapper>
+        </FallbackWrapper>
+      )
     }
     return this.props.children
   }
+}
+
+function getRelevantState(): null | keyof AppState {
+  const path = window.location.hash
+  if (!path.startsWith('#/')) {
+    return null
+  }
+  const pieces = path.substring(2).split(/[\/\\?]/)
+  switch (pieces[0]) {
+    case 'swap':
+      return 'swap'
+    case 'add':
+      if (pieces[1] === 'v2') return 'mint'
+      else return 'mintV3'
+    case 'remove':
+      if (pieces[1] === 'v2') return 'burn'
+      else return 'burnV3'
+  }
+  return null
+}
+
+function issueBody(error: Error): string {
+  const relevantState = getRelevantState()
+  const deviceData = getUserAgent()
+  return `## URL
+  
+${window.location.href}
+
+${
+  relevantState
+    ? `## \`${relevantState}\` state
+    
+\`\`\`json
+${JSON.stringify(store.getState()[relevantState], null, 2)}
+\`\`\`
+`
+    : ''
+}
+${
+  error.name &&
+  `## Error
+
+\`\`\`
+${error.name}${error.message && `: ${error.message}`}
+\`\`\`
+`
+}
+${
+  error.stack &&
+  `## Stacktrace
+
+\`\`\`
+${error.stack}
+\`\`\`
+`
+}
+${
+  deviceData &&
+  `## Device data
+
+\`\`\`json
+${JSON.stringify(deviceData, null, 2)}
+\`\`\`
+`
+}
+`
 }

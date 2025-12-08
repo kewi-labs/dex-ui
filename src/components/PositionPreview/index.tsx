@@ -1,37 +1,34 @@
-import { Trans } from '@lingui/macro'
-import { Currency } from '@uniswap/sdk-core'
+import React, { useState, useCallback, useContext } from 'react'
 import { Position } from '@uniswap/v3-sdk'
-import RangeBadge from 'components/Badge/RangeBadge'
 import { LightCard } from 'components/Card'
 import { AutoColumn } from 'components/Column'
-import DoubleCurrencyLogo from 'components/DoubleLogo'
-import { Break } from 'components/earn/styled'
-import CurrencyLogo from 'components/Logo/CurrencyLogo'
-import RateToggle from 'components/RateToggle'
+import { TYPE } from 'theme'
 import { RowBetween, RowFixed } from 'components/Row'
+import CurrencyLogo from 'components/CurrencyLogo'
+import { unwrappedToken } from 'utils/wrappedCurrency'
+import { Break } from 'components/earn/styled'
+import { useTranslation } from 'react-i18next'
+import { Currency } from '@uniswap/sdk-core'
+import RateToggle from 'components/RateToggle'
+import DoubleCurrencyLogo from 'components/DoubleLogo'
+import RangeBadge from 'components/Badge/RangeBadge'
+import { ThemeContext } from 'styled-components'
 import JSBI from 'jsbi'
-import { ReactNode, useCallback, useState } from 'react'
-import { Bound } from 'state/mint/v3/actions'
-import { useTheme } from 'styled-components'
-import { ThemedText } from 'theme/components'
-import { useFormatter } from 'utils/formatNumbers'
-import { unwrappedToken } from 'utils/unwrappedToken'
 
 export const PositionPreview = ({
   position,
   title,
   inRange,
   baseCurrencyDefault,
-  ticksAtLimit,
 }: {
   position: Position
-  title?: ReactNode
+  title?: string
   inRange: boolean
-  baseCurrencyDefault?: Currency
-  ticksAtLimit: { [bound: string]: boolean | undefined }
+  baseCurrencyDefault?: Currency | undefined
 }) => {
-  const theme = useTheme()
-  const { formatTickPrice } = useFormatter()
+  const { t } = useTranslation()
+
+  const theme = useContext(ThemeContext)
 
   const currency0 = unwrappedToken(position.pool.token0)
   const currency1 = unwrappedToken(position.pool.token1)
@@ -71,9 +68,9 @@ export const PositionPreview = ({
             size={24}
             margin={true}
           />
-          <ThemedText.DeprecatedLabel ml="10px" fontSize="24px">
+          <TYPE.label ml="10px" fontSize="24px">
             {currency0?.symbol} / {currency1?.symbol}
-          </ThemedText.DeprecatedLabel>
+          </TYPE.label>
         </RowFixed>
         <RangeBadge removed={removed} inRange={inRange} />
       </RowBetween>
@@ -83,36 +80,32 @@ export const PositionPreview = ({
           <RowBetween>
             <RowFixed>
               <CurrencyLogo currency={currency0} />
-              <ThemedText.DeprecatedLabel ml="8px">{currency0?.symbol}</ThemedText.DeprecatedLabel>
+              <TYPE.label ml="8px">{currency0?.symbol}</TYPE.label>
             </RowFixed>
             <RowFixed>
-              <ThemedText.DeprecatedLabel mr="8px">{position.amount0.toSignificant(4)}</ThemedText.DeprecatedLabel>
+              <TYPE.label mr="8px">{position.amount0.toSignificant(4)}</TYPE.label>
             </RowFixed>
           </RowBetween>
           <RowBetween>
             <RowFixed>
               <CurrencyLogo currency={currency1} />
-              <ThemedText.DeprecatedLabel ml="8px">{currency1?.symbol}</ThemedText.DeprecatedLabel>
+              <TYPE.label ml="8px">{currency1?.symbol}</TYPE.label>
             </RowFixed>
             <RowFixed>
-              <ThemedText.DeprecatedLabel mr="8px">{position.amount1.toSignificant(4)}</ThemedText.DeprecatedLabel>
+              <TYPE.label mr="8px">{position.amount1.toSignificant(4)}</TYPE.label>
             </RowFixed>
           </RowBetween>
           <Break />
           <RowBetween>
-            <ThemedText.DeprecatedLabel>
-              <Trans>Fee tier</Trans>
-            </ThemedText.DeprecatedLabel>
-            <ThemedText.DeprecatedLabel>
-              <Trans>{position?.pool?.fee / 10000}%</Trans>
-            </ThemedText.DeprecatedLabel>
+            <TYPE.label>{t('feeTier')}</TYPE.label>
+            <TYPE.label>{position?.pool?.fee / 10000}%</TYPE.label>
           </RowBetween>
         </AutoColumn>
       </LightCard>
 
       <AutoColumn gap="md">
         <RowBetween>
-          {title ? <ThemedText.DeprecatedMain>{title}</ThemedText.DeprecatedMain> : <div />}
+          {title ? <TYPE.main>{title}</TYPE.main> : <div />}
           <RateToggle
             currencyA={sorted ? currency0 : currency1}
             currencyB={sorted ? currency1 : currency0}
@@ -123,61 +116,40 @@ export const PositionPreview = ({
         <RowBetween>
           <LightCard width="48%" padding="8px">
             <AutoColumn gap="4px" justify="center">
-              <ThemedText.DeprecatedMain fontSize="12px">
-                <Trans>Min price</Trans>
-              </ThemedText.DeprecatedMain>
-              <ThemedText.DeprecatedMediumHeader textAlign="center">
-                {formatTickPrice({
-                  price: priceLower,
-                  atLimit: ticksAtLimit,
-                  direction: Bound.LOWER,
-                })}
-              </ThemedText.DeprecatedMediumHeader>
-              <ThemedText.DeprecatedMain textAlign="center" fontSize="12px">
-                <Trans>
-                  {quoteCurrency.symbol} per {baseCurrency.symbol}
-                </Trans>
-              </ThemedText.DeprecatedMain>
-              <ThemedText.DeprecatedSmall textAlign="center" color={theme.neutral3} style={{ marginTop: '4px' }}>
-                <Trans>Your position will be 100% composed of {baseCurrency?.symbol} at this price</Trans>
-              </ThemedText.DeprecatedSmall>
+              <TYPE.main fontSize="12px">Min Price</TYPE.main>
+              <TYPE.mediumHeader textAlign="center">{`${priceLower.toSignificant(5)}`}</TYPE.mediumHeader>
+              <TYPE.main
+                textAlign="center"
+                fontSize="12px"
+              >{` ${quoteCurrency.symbol}/${baseCurrency.symbol}`}</TYPE.main>
+              <TYPE.small textAlign="center" color={theme.text3} style={{ marginTop: '4px' }}>
+                Your position will be 100% composed of {baseCurrency?.symbol} at this price
+              </TYPE.small>
             </AutoColumn>
           </LightCard>
 
           <LightCard width="48%" padding="8px">
             <AutoColumn gap="4px" justify="center">
-              <ThemedText.DeprecatedMain fontSize="12px">
-                <Trans>Max price</Trans>
-              </ThemedText.DeprecatedMain>
-              <ThemedText.DeprecatedMediumHeader textAlign="center">
-                {formatTickPrice({
-                  price: priceUpper,
-                  atLimit: ticksAtLimit,
-                  direction: Bound.UPPER,
-                })}
-              </ThemedText.DeprecatedMediumHeader>
-              <ThemedText.DeprecatedMain textAlign="center" fontSize="12px">
-                <Trans>
-                  {quoteCurrency.symbol} per {baseCurrency.symbol}
-                </Trans>
-              </ThemedText.DeprecatedMain>
-              <ThemedText.DeprecatedSmall textAlign="center" color={theme.neutral3} style={{ marginTop: '4px' }}>
-                <Trans>Your position will be 100% composed of {quoteCurrency?.symbol} at this price</Trans>
-              </ThemedText.DeprecatedSmall>
+              <TYPE.main fontSize="12px">Max Price</TYPE.main>
+              <TYPE.mediumHeader textAlign="center">{`${priceUpper.toSignificant(5)}`}</TYPE.mediumHeader>
+              <TYPE.main
+                textAlign="center"
+                fontSize="12px"
+              >{` ${quoteCurrency.symbol} per ${baseCurrency.symbol}`}</TYPE.main>
+              <TYPE.small textAlign="center" color={theme.text3} style={{ marginTop: '4px' }}>
+                Your position will be 100% composed of {quoteCurrency?.symbol} at this price
+              </TYPE.small>
             </AutoColumn>
           </LightCard>
         </RowBetween>
         <LightCard padding="12px ">
           <AutoColumn gap="4px" justify="center">
-            <ThemedText.DeprecatedMain fontSize="12px">
-              <Trans>Current price</Trans>
-            </ThemedText.DeprecatedMain>
-            <ThemedText.DeprecatedMediumHeader>{`${price.toSignificant(5)} `}</ThemedText.DeprecatedMediumHeader>
-            <ThemedText.DeprecatedMain textAlign="center" fontSize="12px">
-              <Trans>
-                {quoteCurrency.symbol} per {baseCurrency.symbol}
-              </Trans>
-            </ThemedText.DeprecatedMain>
+            <TYPE.main fontSize="12px">Current price</TYPE.main>
+            <TYPE.mediumHeader>{`${price.toSignificant(5)} `}</TYPE.mediumHeader>
+            <TYPE.main
+              textAlign="center"
+              fontSize="12px"
+            >{` ${quoteCurrency.symbol} per ${baseCurrency.symbol}`}</TYPE.main>
           </AutoColumn>
         </LightCard>
       </AutoColumn>

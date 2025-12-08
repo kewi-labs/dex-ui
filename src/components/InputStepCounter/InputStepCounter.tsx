@@ -1,14 +1,13 @@
-import { Trans } from '@lingui/macro'
-import { FeeAmount } from '@uniswap/v3-sdk'
-import { ButtonGray } from 'components/Button'
-import { OutlineCard } from 'components/Card'
-import { AutoColumn } from 'components/Column'
-import { ReactNode, useCallback, useEffect, useState } from 'react'
-import { Minus, Plus } from 'react-feather'
-import styled, { keyframes } from 'styled-components'
-import { ThemedText } from 'theme/components'
-
+import React, { useState, useCallback, useEffect } from 'react'
+import { LightCard } from 'components/Card'
+import { RowBetween } from 'components/Row'
 import { Input as NumericalInput } from '../NumericalInput'
+import styled, { keyframes } from 'styled-components'
+import { TYPE } from 'theme'
+import { AutoColumn } from 'components/Column'
+import { ButtonPrimary } from 'components/Button'
+import { FeeAmount } from '@uniswap/v3-sdk'
+import { formattedFeeAmount } from 'utils'
 
 const pulse = (color: string) => keyframes`
   0% {
@@ -24,45 +23,31 @@ const pulse = (color: string) => keyframes`
   }
 `
 
-const InputRow = styled.div`
-  display: flex;
-`
-
-const SmallButton = styled(ButtonGray)`
+const SmallButton = styled(ButtonPrimary)`
+  /* background-color: ${({ theme }) => theme.bg2}; */
   border-radius: 8px;
-  padding: 4px;
+  padding: 4px 6px;
+  width: 48%;
 `
 
-const FocusedOutlineCard = styled(OutlineCard)<{ active?: boolean; pulsing?: boolean }>`
-  border-color: ${({ active, theme }) => active && theme.deprecated_stateOverlayPressed};
+const FocusedOutlineCard = styled(LightCard)<{ active?: boolean; pulsing?: boolean }>`
+  border-color: ${({ active, theme }) => active && theme.blue1};
   padding: 12px;
-  animation: ${({ pulsing, theme }) => pulsing && pulse(theme.accent1)} 0.8s linear;
+  animation: ${({ pulsing, theme }) => pulsing && pulse(theme.blue1)} 0.8s linear;
 `
 
 const StyledInput = styled(NumericalInput)<{ usePercent?: boolean }>`
-  background-color: transparent;
-  font-weight: 535;
-  text-align: left;
+  /* background-color: ${({ theme }) => theme.bg0}; */
+  text-align: center;
+  margin-right: 12px;
   width: 100%;
-
-  ${({ theme }) => theme.deprecated_mediaWidth.deprecated_upToSmall`
-    font-size: 16px;
-  `};
+  font-weight: 500;
 `
 
-const InputColumn = styled(AutoColumn)`
-  width: 100%;
-`
-
-const InputTitle = styled(ThemedText.DeprecatedSmall)`
-  color: ${({ theme }) => theme.neutral2};
+const InputTitle = styled(TYPE.small)`
+  color: ${({ theme }) => theme.text2};
   font-size: 12px;
-  font-weight: 535;
-`
-
-const ButtonLabel = styled(ThemedText.DeprecatedWhite)<{ disabled: boolean }>`
-  color: ${({ theme, disabled }) => (disabled ? theme.neutral2 : theme.neutral1)} !important;
-  display: flex;
+  font-weight: 500;
 `
 
 interface StepCounterProps {
@@ -70,23 +55,20 @@ interface StepCounterProps {
   onUserInput: (value: string) => void
   decrement: () => string
   increment: () => string
-  decrementDisabled?: boolean
-  incrementDisabled?: boolean
   feeAmount?: FeeAmount
   label?: string
   width?: string
   locked?: boolean // disable input
-  title: ReactNode
-  tokenA?: string
-  tokenB?: string
+  title: string
+  tokenA: string | undefined
+  tokenB: string | undefined
 }
 
 const StepCounter = ({
   value,
   decrement,
   increment,
-  decrementDisabled = false,
-  incrementDisabled = false,
+  feeAmount,
   width,
   locked,
   onUserInput,
@@ -103,6 +85,9 @@ const StepCounter = ({
 
   // animation if parent value updates local value
   const [pulsing, setPulsing] = useState<boolean>(false)
+
+  // format fee amount
+  const feeAmountFormatted = feeAmount ? formattedFeeAmount(feeAmount * 2) : ''
 
   const handleOnFocus = () => {
     setUseLocalValue(true)
@@ -140,44 +125,33 @@ const StepCounter = ({
 
   return (
     <FocusedOutlineCard pulsing={pulsing} active={active} onFocus={handleOnFocus} onBlur={handleOnBlur} width={width}>
-      <InputRow>
-        <InputColumn justify="flex-start">
-          <InputTitle fontSize={12} textAlign="center">
-            {title}
-          </InputTitle>
-          <StyledInput
-            className="rate-input-0"
-            value={localValue}
-            fontSize="20px"
-            disabled={locked}
-            onUserInput={(val) => {
-              setLocalValue(val)
-            }}
-          />
-          <InputTitle fontSize={12} textAlign="left">
-            <Trans>
-              {tokenB} per {tokenA}
-            </Trans>
-          </InputTitle>
-        </InputColumn>
-
-        <AutoColumn gap="8px">
-          {!locked && (
-            <SmallButton data-testid="increment-price-range" onClick={handleIncrement} disabled={incrementDisabled}>
-              <ButtonLabel disabled={incrementDisabled} fontSize="12px">
-                <Plus size={18} />
-              </ButtonLabel>
-            </SmallButton>
-          )}
-          {!locked && (
-            <SmallButton data-testid="decrement-price-range" onClick={handleDecrement} disabled={decrementDisabled}>
-              <ButtonLabel disabled={decrementDisabled} fontSize="12px">
-                <Minus size={18} />
-              </ButtonLabel>
-            </SmallButton>
-          )}
-        </AutoColumn>
-      </InputRow>
+      <AutoColumn gap="6px" style={{ marginBottom: '12px' }}>
+        <InputTitle fontSize={12} textAlign="center">
+          {title}
+        </InputTitle>
+        <StyledInput
+          className="rate-input-0"
+          value={localValue}
+          fontSize="20px"
+          disabled={locked}
+          onUserInput={(val) => {
+            setLocalValue(val)
+          }}
+        />
+        <InputTitle fontSize={12} textAlign="center">
+          {tokenB + ' per ' + tokenA}
+        </InputTitle>
+      </AutoColumn>
+      {!locked ? (
+        <RowBetween>
+          <SmallButton onClick={handleDecrement}>
+            <TYPE.white fontSize="12px">-{feeAmountFormatted}%</TYPE.white>
+          </SmallButton>
+          <SmallButton onClick={handleIncrement}>
+            <TYPE.white fontSize="12px">+{feeAmountFormatted}%</TYPE.white>
+          </SmallButton>
+        </RowBetween>
+      ) : null}
     </FocusedOutlineCard>
   )
 }

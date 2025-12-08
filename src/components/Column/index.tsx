@@ -1,13 +1,9 @@
-import styled from 'styled-components'
-import { Gap } from 'theme'
+import styled from 'styled-components/macro'
 
-export const Column = styled.div<{
-  gap?: Gap
-}>`
+const Column = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: ${({ gap, theme }) => gap && theme.grids[gap]};
 `
 export const ColumnCenter = styled(Column)`
   width: 100%;
@@ -15,15 +11,13 @@ export const ColumnCenter = styled(Column)`
 `
 
 export const AutoColumn = styled.div<{
-  gap?: Gap | string
+  gap?: 'sm' | 'md' | 'lg' | string
   justify?: 'stretch' | 'center' | 'start' | 'end' | 'flex-start' | 'flex-end' | 'space-between'
-  grow?: true
 }>`
   display: grid;
   grid-auto-rows: auto;
-  grid-row-gap: ${({ gap, theme }) => (gap && theme.grids[gap as Gap]) || gap};
+  grid-row-gap: ${({ gap }) => (gap === 'sm' && '8px') || (gap === 'md' && '12px') || (gap === 'lg' && '24px') || gap};
   justify-items: ${({ justify }) => justify && justify};
-  flex-grow: ${({ grow }) => grow && 1};
 `
 
 export default Column

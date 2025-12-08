@@ -1,13 +1,12 @@
-import { Trans } from '@lingui/macro'
 import { Currency, Percent, Price } from '@uniswap/sdk-core'
+import React, { useContext } from 'react'
 import { Text } from 'rebass'
-import { useTheme } from 'styled-components'
-import { ThemedText } from 'theme/components'
-
+import { ThemeContext } from 'styled-components'
 import { AutoColumn } from '../../components/Column'
 import { AutoRow } from '../../components/Row'
 import { ONE_BIPS } from '../../constants/misc'
 import { Field } from '../../state/mint/actions'
+import { TYPE } from '../../theme'
 
 export function PoolPriceBar({
   currencies,
@@ -20,45 +19,31 @@ export function PoolPriceBar({
   poolTokenPercentage?: Percent
   price?: Price<Currency, Currency>
 }) {
-  const theme = useTheme()
-
-  let invertedPrice: string | undefined
-  try {
-    invertedPrice = price?.invert()?.toSignificant(6)
-  } catch (error) {
-    invertedPrice = undefined
-  }
-
+  const theme = useContext(ThemeContext)
   return (
     <AutoColumn gap="md">
       <AutoRow justify="space-around" gap="4px">
         <AutoColumn justify="center">
-          <ThemedText.DeprecatedBlack data-testid="currency-b-price">
-            {price?.toSignificant(6) ?? '-'}
-          </ThemedText.DeprecatedBlack>
-          <Text fontWeight={535} fontSize={14} color={theme.neutral2} pt={1}>
-            <Trans>
-              {currencies[Field.CURRENCY_B]?.symbol} per {currencies[Field.CURRENCY_A]?.symbol}
-            </Trans>
+          <TYPE.black>{price?.toSignificant(6) ?? '-'}</TYPE.black>
+          <Text fontWeight={500} fontSize={14} color={theme.text2} pt={1}>
+            {currencies[Field.CURRENCY_B]?.symbol} per {currencies[Field.CURRENCY_A]?.symbol}
           </Text>
         </AutoColumn>
         <AutoColumn justify="center">
-          <ThemedText.DeprecatedBlack data-testid="currency-a-price">{invertedPrice ?? '-'}</ThemedText.DeprecatedBlack>
-          <Text fontWeight={535} fontSize={14} color={theme.neutral2} pt={1}>
-            <Trans>
-              {currencies[Field.CURRENCY_A]?.symbol} per {currencies[Field.CURRENCY_B]?.symbol}
-            </Trans>
+          <TYPE.black>{price?.invert()?.toSignificant(6) ?? '-'}</TYPE.black>
+          <Text fontWeight={500} fontSize={14} color={theme.text2} pt={1}>
+            {currencies[Field.CURRENCY_A]?.symbol} per {currencies[Field.CURRENCY_B]?.symbol}
           </Text>
         </AutoColumn>
         <AutoColumn justify="center">
-          <ThemedText.DeprecatedBlack>
+          <TYPE.black>
             {noLiquidity && price
               ? '100'
               : (poolTokenPercentage?.lessThan(ONE_BIPS) ? '<0.01' : poolTokenPercentage?.toFixed(2)) ?? '0'}
             %
-          </ThemedText.DeprecatedBlack>
-          <Text fontWeight={535} fontSize={14} color={theme.neutral2} pt={1}>
-            <Trans>Share of pool</Trans>
+          </TYPE.black>
+          <Text fontWeight={500} fontSize={14} color={theme.text2} pt={1}>
+            Share of Pool
           </Text>
         </AutoColumn>
       </AutoRow>

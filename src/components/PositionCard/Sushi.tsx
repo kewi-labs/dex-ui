@@ -1,26 +1,28 @@
-import { Trans } from '@lingui/macro'
+import React from 'react'
 import { Token } from '@uniswap/sdk-core'
-import Badge, { BadgeVariant } from 'components/Badge'
-import { transparentize } from 'polished'
 import { Link } from 'react-router-dom'
 import { Text } from 'rebass'
-import styled from 'styled-components'
+import styled from 'styled-components/macro'
+
+import { unwrappedToken } from '../../utils/wrappedCurrency'
+import { ButtonEmpty } from '../Button'
+import { transparentize } from 'polished'
+import { CardNoise } from '../earn/styled'
 
 import { useColor } from '../../hooks/useColor'
-import { unwrappedToken } from '../../utils/unwrappedToken'
-import { ButtonEmpty } from '../Button'
+
 import { LightCard } from '../Card'
 import { AutoColumn } from '../Column'
 import DoubleCurrencyLogo from '../DoubleLogo'
-import { CardNoise } from '../earn/styled'
-import { AutoRow, RowFixed } from '../Row'
-import { Dots } from '../swap/styled'
+import { RowFixed, AutoRow } from '../Row'
+import { Dots } from '../swap/styleds'
 import { FixedHeightRow } from '.'
+import Badge, { BadgeVariant } from 'components/Badge'
 
 const StyledPositionCard = styled(LightCard)<{ bgColor: any }>`
   border: none;
   background: ${({ theme, bgColor }) =>
-    `radial-gradient(91.85% 100% at 1.84% 0%, ${transparentize(0.8, bgColor)} 0%, ${theme.surface2} 100%) `};
+    `radial-gradient(91.85% 100% at 1.84% 0%, ${transparentize(0.8, bgColor)} 0%, ${theme.bg3} 100%) `};
   position: relative;
   overflow: hidden;
 `
@@ -41,18 +43,12 @@ export default function SushiPositionCard({ tokenA, tokenB, liquidityToken, bord
   return (
     <StyledPositionCard border={border} bgColor={backgroundColor}>
       <CardNoise />
-      <AutoColumn gap="md">
+      <AutoColumn gap="12px">
         <FixedHeightRow>
           <AutoRow gap="8px">
             <DoubleCurrencyLogo currency0={currency0} currency1={currency1} size={20} />
-            <Text fontWeight={535} fontSize={20}>
-              {!currency0 || !currency1 ? (
-                <Dots>
-                  <Trans>Loading</Trans>
-                </Dots>
-              ) : (
-                `${currency0.symbol}/${currency1.symbol}`
-              )}
+            <Text fontWeight={500} fontSize={20}>
+              {!currency0 || !currency1 ? <Dots>Loading</Dots> : `${currency0.symbol}/${currency1.symbol}`}
             </Text>
 
             <Badge variant={BadgeVariant.WARNING}>Sushi</Badge>
@@ -60,12 +56,12 @@ export default function SushiPositionCard({ tokenA, tokenB, liquidityToken, bord
           <RowFixed gap="8px">
             <ButtonEmpty
               padding="0px 35px 0px 0px"
-              $borderRadius="12px"
+              borderRadius="12px"
               width="fit-content"
               as={Link}
               to={`/migrate/v2/${liquidityToken.address}`}
             >
-              <Trans>Migrate</Trans>
+              Migrate
             </ButtonEmpty>
           </RowFixed>
         </FixedHeightRow>

@@ -1,33 +1,28 @@
-import { getCreate2Address } from '@ethersproject/address'
-import { keccak256, pack } from '@ethersproject/solidity'
-import { Trans } from '@lingui/macro'
-import { Token, V2_FACTORY_ADDRESSES } from '@uniswap/sdk-core'
+import React, { useContext, useMemo } from 'react'
 import { Pair } from '@uniswap/v2-sdk'
-import { useWeb3React } from '@web3-react/core'
-import MigrateSushiPositionCard from 'components/PositionCard/Sushi'
-import MigrateV2PositionCard from 'components/PositionCard/V2'
-import { SwitchLocaleLink } from 'components/SwitchLocaleLink'
-import { V2Unsupported } from 'components/V2Unsupported'
-import { useNetworkSupportsV2 } from 'hooks/useNetworkSupportsV2'
-import { PairState, useV2Pairs } from 'hooks/useV2Pairs'
-import { ReactNode, useMemo } from 'react'
-import { Text } from 'rebass'
-import { useTheme } from 'styled-components'
-import { BackArrowLink, StyledInternalLink, ThemedText } from 'theme/components'
-
-import { LightCard } from '../../components/Card'
+import { Token, ChainId } from '@uniswap/sdk-core'
+import { ThemeContext } from 'styled-components'
 import { AutoColumn } from '../../components/Column'
-import QuestionHelper from '../../components/QuestionHelper'
 import { AutoRow } from '../../components/Row'
-import { Dots } from '../../components/swap/styled'
-import { useTokenBalancesWithLoadingIndicator } from '../../state/connection/hooks'
-import { toV2LiquidityToken, useTrackedTokenPairs } from '../../state/user/hooks'
+import { Text } from 'rebass'
+import { useActiveWeb3React } from '../../hooks/web3'
+import { useTokenBalancesWithLoadingIndicator } from '../../state/wallet/hooks'
+import { BackArrow, StyledInternalLink, TYPE } from '../../theme'
+import { LightCard } from '../../components/Card'
 import { BodyWrapper } from '../AppBody'
+import QuestionHelper from '../../components/QuestionHelper'
+import { Dots } from '../../components/swap/styleds'
+import { toV2LiquidityToken, useTrackedTokenPairs } from '../../state/user/hooks'
+import MigrateV2PositionCard from 'components/PositionCard/V2'
+import MigrateSushiPositionCard from 'components/PositionCard/Sushi'
+import { PairState, useV2Pairs } from 'hooks/useV2Pairs'
+import { getCreate2Address } from '@ethersproject/address'
+import { pack, keccak256 } from '@ethersproject/solidity'
 
-function EmptyState({ message }: { message: ReactNode }) {
+function EmptyState({ message }: { message: string }) {
   return (
     <AutoColumn style={{ minHeight: 200, justifyContent: 'center', alignItems: 'center' }}>
-      <ThemedText.DeprecatedBody>{message}</ThemedText.DeprecatedBody>
+      <TYPE.body>{message}</TYPE.body>
     </AutoColumn>
   )
 }
@@ -52,10 +47,8 @@ function toSushiLiquidityToken([tokenA, tokenB]: [Token, Token]): Token {
 }
 
 export default function MigrateV2() {
-  const theme = useTheme()
-  const { account, chainId } = useWeb3React()
-
-  const v2FactoryAddress = chainId ? V2_FACTORY_ADDRESSES[chainId] : undefined
+  const theme = useContext(ThemeContext)
+  const { account, chainId } = useActiveWeb3React()
 
   // fetch the user's balances of all tracked V2 LP tokens
   const trackedTokenPairs = useTrackedTokenPairs()
@@ -65,14 +58,14 @@ export default function MigrateV2() {
     () =>
       trackedTokenPairs.map((tokens) => {
         // sushi liquidity token or null
-        const sushiLiquidityToken = chainId === 1 ? toSushiLiquidityToken(tokens) : null
+        const sushiLiquidityToken = chainId === ChainId.MAINNET ? toSushiLiquidityToken(tokens) : null
         return {
-          v2liquidityToken: v2FactoryAddress ? toV2LiquidityToken(tokens) : undefined,
+          v2liquidityToken: toV2LiquidityToken(tokens),
           sushiLiquidityToken,
           tokens,
         }
       }),
-    [trackedTokenPairs, chainId, v2FactoryAddress]
+    [trackedTokenPairs, chainId]
   )
 
   //  get pair liquidity token addresses for balance-fetching purposes
@@ -96,7 +89,7 @@ export default function MigrateV2() {
     if (fetchingPairBalances) return []
 
     return tokenPairsWithLiquidityTokens
-      .filter(({ v2liquidityToken }) => v2liquidityToken && pairBalances[v2liquidityToken.address]?.greaterThan(0))
+      .filter(({ v2liquidityToken }) => pairBalances[v2liquidityToken.address]?.greaterThan(0))
       .map((tokenPairsWithLiquidityTokens) => tokenPairsWithLiquidityTokens.tokens)
   }, [fetchingPairBalances, tokenPairsWithLiquidityTokens, pairBalances])
 
@@ -112,80 +105,66 @@ export default function MigrateV2() {
   const v2Pairs = useV2Pairs(tokenPairsWithV2Balance)
   const v2IsLoading = fetchingPairBalances || v2Pairs.some(([pairState]) => pairState === PairState.LOADING)
 
-  const networkSupportsV2 = useNetworkSupportsV2()
-  if (!networkSupportsV2) return <V2Unsupported />
-
   return (
-    <>
-      <BodyWrapper style={{ padding: 24 }}>
-        <AutoColumn gap="16px">
-          <AutoRow style={{ alignItems: 'center', justifyContent: 'space-between' }} gap="8px">
-            <BackArrowLink to="/pools" />
-            <ThemedText.DeprecatedMediumHeader>
-              <Trans>Migrate V2 liquidity</Trans>
-            </ThemedText.DeprecatedMediumHeader>
-            <div>
-              <QuestionHelper text={<Trans>Migrate your liquidity tokens from Uniswap V2 to Uniswap V3.</Trans>} />
-            </div>
-          </AutoRow>
+    <BodyWrapper style={{ padding: 24 }}>
+      <AutoColumn gap="16px">
+        <AutoRow style={{ alignItems: 'center', justifyContent: 'space-between' }} gap="8px">
+          <BackArrow to="/pool" />
+          <TYPE.mediumHeader>Migrate V2 Liquidity</TYPE.mediumHeader>
+          <div>
+            <QuestionHelper text="Migrate your liquidity tokens from Uniswap V2 to Uniswap V3." />
+          </div>
+        </AutoRow>
 
-          <ThemedText.DeprecatedBody style={{ marginBottom: 8, fontWeight: 485 }}>
-            <Trans>
-              For each pool shown below, click migrate to remove your liquidity from Uniswap V2 and deposit it into
-              Uniswap V3.
-            </Trans>
-          </ThemedText.DeprecatedBody>
+        <TYPE.body style={{ marginBottom: 8, fontWeight: 400 }}>
+          For each pool shown below, click migrate to remove your liquidity from Uniswap V2 and deposit it into Uniswap
+          V3.
+        </TYPE.body>
 
-          {!account ? (
-            <LightCard padding="40px">
-              <ThemedText.DeprecatedBody color={theme.neutral3} textAlign="center">
-                <Trans>Connect to a wallet to view your V2 liquidity.</Trans>
-              </ThemedText.DeprecatedBody>
-            </LightCard>
-          ) : v2IsLoading ? (
-            <LightCard padding="40px">
-              <ThemedText.DeprecatedBody color={theme.neutral3} textAlign="center">
-                <Dots>
-                  <Trans>Loading</Trans>
-                </Dots>
-              </ThemedText.DeprecatedBody>
-            </LightCard>
-          ) : v2Pairs.filter(([, pair]) => !!pair).length > 0 ? (
-            <>
-              {v2Pairs
-                .filter(([, pair]) => !!pair)
-                .map(([, pair]) => (
-                  <MigrateV2PositionCard key={(pair as Pair).liquidityToken.address} pair={pair as Pair} />
-                ))}
+        {!account ? (
+          <LightCard padding="40px">
+            <TYPE.body color={theme.text3} textAlign="center">
+              Connect to a wallet to view your V2 liquidity.
+            </TYPE.body>
+          </LightCard>
+        ) : v2IsLoading ? (
+          <LightCard padding="40px">
+            <TYPE.body color={theme.text3} textAlign="center">
+              <Dots>Loading</Dots>
+            </TYPE.body>
+          </LightCard>
+        ) : v2Pairs.filter(([, pair]) => !!pair).length > 0 ? (
+          <>
+            {v2Pairs
+              .filter(([, pair]) => !!pair)
+              .map(([, pair]) => (
+                <MigrateV2PositionCard key={(pair as Pair).liquidityToken.address} pair={pair as Pair} />
+              ))}
 
-              {tokenPairsWithSushiBalance.map(({ sushiLiquidityToken, tokens }) => {
-                return (
-                  <MigrateSushiPositionCard
-                    key={(sushiLiquidityToken as Token).address}
-                    tokenA={tokens[0]}
-                    tokenB={tokens[1]}
-                    liquidityToken={sushiLiquidityToken as Token}
-                  />
-                )
-              })}
-            </>
-          ) : (
-            <EmptyState message={<Trans>No V2 liquidity found.</Trans>} />
-          )}
+            {tokenPairsWithSushiBalance.map(({ sushiLiquidityToken, tokens }) => {
+              return (
+                <MigrateSushiPositionCard
+                  key={(sushiLiquidityToken as Token).address}
+                  tokenA={tokens[0]}
+                  tokenB={tokens[1]}
+                  liquidityToken={sushiLiquidityToken as Token}
+                />
+              )
+            })}
+          </>
+        ) : (
+          <EmptyState message="No V2 Liquidity found." />
+        )}
 
-          <AutoColumn justify="center" gap="md">
-            <Text textAlign="center" fontSize={14} style={{ padding: '.5rem 0 .5rem 0' }}>
-              <Trans>
-                Don’t see one of your v2 positions?{' '}
-                <StyledInternalLink id="import-pool-link" to="/pools/v2/find">
-                  Import it.
-                </StyledInternalLink>
-              </Trans>
-            </Text>
-          </AutoColumn>
+        <AutoColumn justify={'center'} gap="md">
+          <Text textAlign="center" fontSize={14} style={{ padding: '.5rem 0 .5rem 0' }}>
+            {'Don’t see one of your v2 positions?'}{' '}
+            <StyledInternalLink id="import-pool-link" to={'/find?origin=/migrate/v2'}>
+              {'Import it.'}
+            </StyledInternalLink>
+          </Text>
         </AutoColumn>
-      </BodyWrapper>
-      <SwitchLocaleLink />
-    </>
+      </AutoColumn>
+    </BodyWrapper>
   )
 }

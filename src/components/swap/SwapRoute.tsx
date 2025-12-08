@@ -1,81 +1,47 @@
-import { Trans } from '@lingui/macro'
-import Column from 'components/Column'
-import RoutingDiagram from 'components/RoutingDiagram/RoutingDiagram'
-import { RowBetween } from 'components/Row'
-import { SUPPORTED_GAS_ESTIMATE_CHAIN_IDS } from 'constants/chains'
-import useAutoRouterSupported from 'hooks/useAutoRouterSupported'
-import { ClassicTrade, SubmittableTrade } from 'state/routing/types'
-import { isClassicTrade } from 'state/routing/utils'
-import { Separator, ThemedText } from 'theme/components'
-import { NumberType, useFormatter } from 'utils/formatNumbers'
-import getRoutingDiagramEntries from 'utils/getRoutingDiagramEntries'
+import { Currency, TradeType } from '@uniswap/sdk-core'
+import { Trade as V2Trade } from '@uniswap/v2-sdk'
+import { Trade as V3Trade, FeeAmount } from '@uniswap/v3-sdk'
+import React, { Fragment, memo, useContext } from 'react'
+import { ChevronRight } from 'react-feather'
+import { Flex } from 'rebass'
+import { ThemeContext } from 'styled-components'
+import { TYPE } from '../../theme'
+import { unwrappedToken } from 'utils/wrappedCurrency'
 
-import RouterLabel from '../RouterLabel'
+function LabeledArrow({}: { fee: FeeAmount }) {
+  const theme = useContext(ThemeContext)
 
-// TODO(WEB-2022)
-// Can `trade.gasUseEstimateUSD` be defined when `chainId` is not in `SUPPORTED_GAS_ESTIMATE_CHAIN_IDS`?
-function useGasPrice({ gasUseEstimateUSD, inputAmount }: ClassicTrade) {
-  const { formatNumber } = useFormatter()
-  if (!gasUseEstimateUSD || !SUPPORTED_GAS_ESTIMATE_CHAIN_IDS.includes(inputAmount.currency.chainId)) return undefined
-
-  return gasUseEstimateUSD === 0 ? '<$0.01' : formatNumber({ input: gasUseEstimateUSD, type: NumberType.FiatGasPrice })
+  // todo: render the fee in the label
+  return <ChevronRight size={14} color={theme.text2} />
 }
 
-function RouteLabel({ trade }: { trade: SubmittableTrade }) {
+export default memo(function SwapRoute({
+  trade,
+}: {
+  trade: V2Trade<Currency, Currency, TradeType> | V3Trade<Currency, Currency, TradeType>
+}) {
+  const tokenPath = trade instanceof V2Trade ? trade.route.path : trade.route.tokenPath
+  const theme = useContext(ThemeContext)
   return (
-    <RowBetween>
-      <ThemedText.BodySmall color="neutral2">Order Routing</ThemedText.BodySmall>
-      <RouterLabel trade={trade} color="neutral1" />
-    </RowBetween>
+    <Flex flexWrap="wrap" width="100%" justifyContent="flex-start" alignItems="center">
+      {tokenPath.map((token, i, path) => {
+        const isLastItem: boolean = i === path.length - 1
+        const currency = unwrappedToken(token)
+        return (
+          <Fragment key={i}>
+            <Flex alignItems="end">
+              <TYPE.black color={theme.text1} ml="0.145rem" mr="0.145rem">
+                {currency.symbol}
+              </TYPE.black>
+            </Flex>
+            {isLastItem ? null : trade instanceof V2Trade ? (
+              <ChevronRight size={14} color={theme.text2} />
+            ) : (
+              <LabeledArrow fee={trade.route.pools[i].fee} />
+            )}
+          </Fragment>
+        )
+      })}
+    </Flex>
   )
-}
-
-function PriceImpactRow({ trade }: { trade: ClassicTrade }) {
-  const { formatPriceImpact } = useFormatter()
-  return (
-    <ThemedText.BodySmall color="neutral2">
-      <RowBetween>
-        <Trans>Price Impact</Trans>
-        <div>{formatPriceImpact(trade.priceImpact)}</div>
-      </RowBetween>
-    </ThemedText.BodySmall>
-  )
-}
-
-export function RoutingTooltip({ trade }: { trade: SubmittableTrade }) {
-  return isClassicTrade(trade) ? (
-    <Column gap="md">
-      <PriceImpactRow trade={trade} />
-      <Separator />
-      <RouteLabel trade={trade} />
-      <SwapRoute trade={trade} />
-    </Column>
-  ) : (
-    <Column gap="md">
-      <RouteLabel trade={trade} />
-      <Separator />
-    </Column>
-  )
-}
-
-export function SwapRoute({ trade }: { trade: ClassicTrade }) {
-  const { inputAmount, outputAmount } = trade
-  const routes = getRoutingDiagramEntries(trade)
-  const gasPrice = useGasPrice(trade)
-
-  return useAutoRouterSupported() ? (
-    <Column gap="md">
-      <RoutingDiagram routes={routes} currencyIn={inputAmount.currency} currencyOut={outputAmount.currency} />
-      <ThemedText.Caption color="neutral2">
-        {Boolean(gasPrice) && <Trans>Best price route costs ~{gasPrice} in gas. </Trans>}
-        {Boolean(gasPrice) && ' '}
-        <Trans>
-          This route optimizes your total output by considering split routes, multiple hops, and the gas cost of each
-          step.
-        </Trans>
-      </ThemedText.Caption>
-    </Column>
-  ) : (
-    <RoutingDiagram routes={routes} currencyIn={inputAmount.currency} currencyOut={outputAmount.currency} />
-  )
-}
+})

@@ -1,87 +1,48 @@
-import { createSlice, nanoid } from '@reduxjs/toolkit'
-import { ChainId } from '@uniswap/sdk-core'
-import { DEFAULT_TXN_DISMISS_MS } from 'constants/misc'
+import { createReducer, nanoid } from '@reduxjs/toolkit'
+import { addPopup, PopupContent, removePopup, updateBlockNumber, ApplicationModal, setOpenModal } from './actions'
 
-export enum PopupType {
-  Transaction = 'transaction',
-  FailedSwitchNetwork = 'failedSwitchNetwork',
-}
-
-export type PopupContent =
-  | {
-      type: PopupType.Transaction
-      hash: string
-    }
-  | {
-      type: PopupType.FailedSwitchNetwork
-      failedSwitchNetwork: ChainId
-    }
-
-export enum ApplicationModal {
-  DELEGATE,
-  EXECUTE,
-  MENU,
-  METAMASK_CONNECTION_ERROR,
-  NETWORK_FILTER,
-  NETWORK_SELECTOR,
-  POOL_OVERVIEW_OPTIONS,
-  QUEUE,
-  SETTINGS,
-  SHARE,
-  TAX_SERVICE,
-  TIME_SELECTOR,
-  VOTE,
-}
-
-export type PopupList = Array<{ key: string; show: boolean; content: PopupContent; removeAfterMs: number | null }>
+type PopupList = Array<{ key: string; show: boolean; content: PopupContent; removeAfterMs: number | null }>
 
 export interface ApplicationState {
-  readonly chainId: number | null
-  readonly fiatOnramp: { available: boolean; availabilityChecked: boolean }
-  readonly openModal: ApplicationModal | null
+  readonly blockNumber: { readonly [chainId: number]: number }
   readonly popupList: PopupList
+  readonly openModal: ApplicationModal | null
 }
 
 const initialState: ApplicationState = {
-  fiatOnramp: { available: false, availabilityChecked: false },
-  chainId: null,
-  openModal: null,
+  blockNumber: {},
   popupList: [],
+  openModal: null,
 }
 
-const applicationSlice = createSlice({
-  name: 'application',
-  initialState,
-  reducers: {
-    updateChainId(state, action) {
-      const { chainId } = action.payload
-      state.chainId = chainId
-    },
-    setOpenModal(state, action) {
+export default createReducer(initialState, (builder) =>
+  builder
+    .addCase(updateBlockNumber, (state, action) => {
+      const { chainId, blockNumber } = action.payload
+      if (typeof state.blockNumber[chainId] !== 'number') {
+        state.blockNumber[chainId] = blockNumber
+      } else {
+        state.blockNumber[chainId] = Math.max(blockNumber, state.blockNumber[chainId])
+      }
+    })
+    .addCase(setOpenModal, (state, action) => {
       state.openModal = action.payload
-    },
-    addPopup(state, { payload: { content, key, removeAfterMs = DEFAULT_TXN_DISMISS_MS } }) {
-      key = key || nanoid()
-      state.popupList = [
-        ...state.popupList.filter((popup) => popup.key !== key),
+    })
+    .addCase(addPopup, (state, { payload: { content, key, removeAfterMs = 25000 } }) => {
+      state.popupList = (key ? state.popupList.filter((popup) => popup.key !== key) : state.popupList).concat([
         {
-          key,
+          key: key || nanoid(),
           show: true,
           content,
           removeAfterMs,
         },
-      ]
-    },
-    removePopup(state, { payload: { key } }) {
-      state.popupList = state.popupList.map((popup) => {
-        if (popup.key === key) {
-          popup.show = false
+      ])
+    })
+    .addCase(removePopup, (state, { payload: { key } }) => {
+      state.popupList.forEach((p) => {
+        if (p.key === key) {
+          p.show = false
         }
-        return popup
       })
-    },
-  },
-})
-
-export const { updateChainId, setOpenModal, addPopup, removePopup } = applicationSlice.actions
-export default applicationSlice.reducer
+    })
+)

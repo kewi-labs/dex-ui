@@ -1,111 +1,39 @@
-import { Trans } from '@lingui/macro'
-import { Percent } from '@uniswap/sdk-core'
-import Column from 'components/Column'
-import SpinningLoader from 'components/Loader/SpinningLoader'
-import { SwapResult } from 'hooks/useSwapCallback'
-import { ReactNode } from 'react'
-import { AlertTriangle } from 'react-feather'
-import { InterfaceTrade } from 'state/routing/types'
-import styled, { useTheme } from 'styled-components'
-import { ThemedText } from 'theme/components'
+import { Currency, TradeType } from '@uniswap/sdk-core'
+import { Trade as V2Trade } from '@uniswap/v2-sdk'
+import { Trade as V3Trade } from '@uniswap/v3-sdk'
 
-import { ButtonError, SmallButtonPrimary } from '../Button'
-import Row, { AutoRow, RowBetween, RowFixed } from '../Row'
-import { SwapCallbackError, SwapShowAcceptChanges } from './styled'
-import { SwapLineItemType } from './SwapLineItem'
-import SwapLineItem from './SwapLineItem'
-
-const DetailsContainer = styled(Column)`
-  padding: 0 8px;
-`
-
-const StyledAlertTriangle = styled(AlertTriangle)`
-  margin-right: 8px;
-  min-width: 24px;
-`
-
-const ConfirmButton = styled(ButtonError)`
-  height: 56px;
-  margin-top: 10px;
-`
+import React from 'react'
+import { Text } from 'rebass'
+import { ButtonError } from '../Button'
+import { AutoRow } from '../Row'
+import { SwapCallbackError } from './styleds'
 
 export default function SwapModalFooter({
-  trade,
-  allowedSlippage,
   onConfirm,
   swapErrorMessage,
   disabledConfirm,
-  showAcceptChanges,
-  onAcceptChanges,
-  isLoading,
 }: {
-  trade: InterfaceTrade
-  swapResult?: SwapResult
-  allowedSlippage: Percent
+  trade: V2Trade<Currency, Currency, TradeType> | V3Trade<Currency, Currency, TradeType>
   onConfirm: () => void
-  swapErrorMessage?: ReactNode
+  swapErrorMessage: string | undefined
   disabledConfirm: boolean
-  fiatValueInput: { data?: number; isLoading: boolean }
-  fiatValueOutput: { data?: number; isLoading: boolean }
-  showAcceptChanges: boolean
-  onAcceptChanges: () => void
-  isLoading: boolean
 }) {
-  const theme = useTheme()
-
-  const lineItemProps = { trade, allowedSlippage, syncing: false }
-
   return (
     <>
-      <DetailsContainer gap="md">
-        <SwapLineItem {...lineItemProps} type={SwapLineItemType.EXCHANGE_RATE} />
-        <SwapLineItem {...lineItemProps} type={SwapLineItemType.PRICE_IMPACT} />
-        <SwapLineItem {...lineItemProps} type={SwapLineItemType.MAX_SLIPPAGE} />
-        <SwapLineItem {...lineItemProps} type={SwapLineItemType.MAXIMUM_INPUT} />
-        <SwapLineItem {...lineItemProps} type={SwapLineItemType.MINIMUM_OUTPUT} />
-        <SwapLineItem {...lineItemProps} type={SwapLineItemType.INPUT_TOKEN_FEE_ON_TRANSFER} />
-        <SwapLineItem {...lineItemProps} type={SwapLineItemType.OUTPUT_TOKEN_FEE_ON_TRANSFER} />
-        <SwapLineItem {...lineItemProps} type={SwapLineItemType.NETWORK_COST} />
-      </DetailsContainer>
-      {showAcceptChanges ? (
-        <SwapShowAcceptChanges data-testid="show-accept-changes">
-          <RowBetween>
-            <RowFixed>
-              <StyledAlertTriangle size={20} />
-              <ThemedText.DeprecatedMain color={theme.accent1}>
-                <Trans>Price updated</Trans>
-              </ThemedText.DeprecatedMain>
-            </RowFixed>
-            <SmallButtonPrimary onClick={onAcceptChanges}>
-              <Trans>Accept</Trans>
-            </SmallButtonPrimary>
-          </RowBetween>
-        </SwapShowAcceptChanges>
-      ) : (
-        <AutoRow>
-          <ConfirmButton
-            data-testid="confirm-swap-button"
-            onClick={onConfirm}
-            disabled={disabledConfirm}
-            $borderRadius="12px"
-          >
-            {isLoading ? (
-              <ThemedText.HeadlineSmall color="neutral2">
-                <Row>
-                  <SpinningLoader />
-                  <Trans>Finalizing quote...</Trans>
-                </Row>
-              </ThemedText.HeadlineSmall>
-            ) : (
-              <ThemedText.HeadlineSmall color="deprecated_accentTextLightPrimary">
-                <Trans>Confirm swap</Trans>
-              </ThemedText.HeadlineSmall>
-            )}
-          </ConfirmButton>
+      <AutoRow>
+        <ButtonError
+          onClick={onConfirm}
+          disabled={disabledConfirm}
+          style={{ margin: '10px 0 0 0' }}
+          id="confirm-swap-or-send"
+        >
+          <Text fontSize={20} fontWeight={500}>
+            Confirm Swap
+          </Text>
+        </ButtonError>
 
-          {swapErrorMessage ? <SwapCallbackError error={swapErrorMessage} /> : null}
-        </AutoRow>
-      )}
+        {swapErrorMessage ? <SwapCallbackError error={swapErrorMessage} /> : null}
+      </AutoRow>
     </>
   )
 }

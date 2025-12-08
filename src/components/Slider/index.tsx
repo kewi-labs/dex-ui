@@ -1,5 +1,5 @@
-import { ChangeEvent, useCallback } from 'react'
-import styled from 'styled-components'
+import React, { useCallback } from 'react'
+import styled from 'styled-components/macro'
 
 const StyledRangeInput = styled.input<{ size: number }>`
   -webkit-appearance: none; /* Hides the slider so that custom slider can be made */
@@ -19,11 +19,11 @@ const StyledRangeInput = styled.input<{ size: number }>`
     -webkit-appearance: none;
     height: ${({ size }) => size}px;
     width: ${({ size }) => size}px;
-    background-color: ${({ theme }) => theme.accent1};
+    background-color: ${({ theme }) => theme.blue1};
     border-radius: 100%;
     border: none;
     transform: translateY(-50%);
-    color: ${({ theme }) => theme.surface1};
+    color: ${({ theme }) => theme.bg1};
 
     &:hover,
     &:focus {
@@ -38,7 +38,7 @@ const StyledRangeInput = styled.input<{ size: number }>`
     background-color: #565a69;
     border-radius: 100%;
     border: none;
-    color: ${({ theme }) => theme.surface1};
+    color: ${({ theme }) => theme.bg1};
 
     &:hover,
     &:focus {
@@ -52,7 +52,7 @@ const StyledRangeInput = styled.input<{ size: number }>`
     width: ${({ size }) => size}px;
     background-color: #565a69;
     border-radius: 100%;
-    color: ${({ theme }) => theme.surface1};
+    color: ${({ theme }) => theme.bg1};
 
     &:hover,
     &:focus {
@@ -62,12 +62,12 @@ const StyledRangeInput = styled.input<{ size: number }>`
   }
 
   &::-webkit-slider-runnable-track {
-    background: linear-gradient(90deg, ${({ theme }) => theme.accent1}, ${({ theme }) => theme.accent1});
+    background: linear-gradient(90deg, ${({ theme }) => theme.blue1}, ${({ theme }) => theme.blue2});
     height: 2px;
   }
 
   &::-moz-range-track {
-    background: linear-gradient(90deg, ${({ theme }) => theme.surface4}, ${({ theme }) => theme.surface2});
+    background: linear-gradient(90deg, ${({ theme }) => theme.bg5}, ${({ theme }) => theme.bg3});
     height: 2px;
   }
 
@@ -76,14 +76,14 @@ const StyledRangeInput = styled.input<{ size: number }>`
     border-color: transparent;
     color: transparent;
 
-    background: ${({ theme }) => theme.surface4};
+    background: ${({ theme }) => theme.bg5};
     height: 2px;
   }
   &::-ms-fill-lower {
-    background: ${({ theme }) => theme.surface4};
+    background: ${({ theme }) => theme.bg5};
   }
   &::-ms-fill-upper {
-    background: ${({ theme }) => theme.surface2};
+    background: ${({ theme }) => theme.bg3};
   }
 `
 
@@ -106,7 +106,7 @@ export default function Slider({
   ...rest
 }: InputSliderProps) {
   const changeCallback = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
+    (e) => {
       onChange(parseInt(e.target.value))
     },
     [onChange]

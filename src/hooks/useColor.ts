@@ -1,67 +1,56 @@
-import { ChainId, Token } from '@uniswap/sdk-core'
-import { DEFAULT_COLOR } from 'constants/tokenColors'
-import useTokenLogoSource from 'hooks/useAssetLogoSource'
-import { rgb } from 'polished'
-import { useEffect, useState } from 'react'
-import { WrappedTokenInfo } from 'state/lists/wrappedTokenInfo'
-import { getColor } from 'utils/getColor'
+import { useState, useLayoutEffect } from 'react'
+import { shade } from 'polished'
+import Vibrant from 'node-vibrant'
+import { hex } from 'wcag-contrast'
+import { Token, ChainId } from '@uniswap/sdk-core'
+import uriToHttp from 'utils/uriToHttp'
 
-function URIForEthToken(address: string) {
-  return `https://raw.githubusercontent.com/uniswap/assets/master/blockchains/ethereum/assets/${address}/logo.png`
-}
-
-/**
- * Retrieves the average color from a token's symbol using various sources.
- *
- * @param {Token} token - The token for which to fetch the color.
- * @param {string} primarySrc - Primary source URL for color retrieval (optional).
- *
- * @returns {Promise< | null>} A promise that resolves to a color string or null if color cannot be determined.
- */
-async function getColorFromToken(token: Token, primarySrc?: string): Promise<string | null> {
-  if (!(token instanceof WrappedTokenInfo)) {
-    return null
+async function getColorFromToken(token: Token): Promise<string | null> {
+  if (token.chainId !== ChainId.MAINNET) {
+    return Promise.resolve('#FAAB14')
   }
 
-  const wrappedToken = token as WrappedTokenInfo
-  let color: string | null = null
+  const path = `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/${token.address}/logo.png`
 
-  try {
-    if (primarySrc) {
-      const colorArray = await getColor(primarySrc)
-      color = colorArray === DEFAULT_COLOR ? null : convertColorArrayToString(colorArray)
-    }
-
-    if (!color && wrappedToken.logoURI) {
-      const colorArray = await getColor(wrappedToken.logoURI)
-      color = colorArray === DEFAULT_COLOR ? null : convertColorArrayToString(colorArray)
-    }
-
-    if (!color && token.chainId === ChainId.MAINNET) {
-      const colorArray = await getColor(URIForEthToken(wrappedToken.address))
-      color = colorArray === DEFAULT_COLOR ? null : convertColorArrayToString(colorArray)
-    }
-
-    return color
-  } catch (error) {
-    console.warn(`Unable to load logoURI (${token.symbol}): ${primarySrc}, ${wrappedToken.logoURI}`)
-    return null
-  }
+  return Vibrant.from(path)
+    .getPalette()
+    .then((palette) => {
+      if (palette?.Vibrant) {
+        let detectedHex = palette.Vibrant.hex
+        let AAscore = hex(detectedHex, '#FFF')
+        while (AAscore < 3) {
+          detectedHex = shade(0.005, detectedHex)
+          AAscore = hex(detectedHex, '#FFF')
+        }
+        return detectedHex + '20'
+      }
+      return null
+    })
+    .catch(() => null)
 }
 
-function convertColorArrayToString([red, green, blue]: number[]): string {
-  return rgb({ red, green, blue })
+async function getColorFromUriPath(uri: string): Promise<string | null> {
+  const formattedPath = uriToHttp(uri)[0]
+
+  return Vibrant.from(formattedPath)
+    .getPalette()
+    .then((palette) => {
+      if (palette?.Vibrant) {
+        return palette.Vibrant.hex
+      }
+      return null
+    })
+    .catch(() => null)
 }
 
 export function useColor(token?: Token) {
   const [color, setColor] = useState('#2172E5')
-  const [src] = useTokenLogoSource(token?.address, token?.chainId, token?.isNative)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let stale = false
 
     if (token) {
-      getColorFromToken(token, src).then((tokenColor) => {
+      getColorFromToken(token).then((tokenColor) => {
         if (!stale && tokenColor !== null) {
           setColor(tokenColor)
         }
@@ -72,7 +61,30 @@ export function useColor(token?: Token) {
       stale = true
       setColor('#2172E5')
     }
-  }, [src, token])
+  }, [token])
+
+  return color
+}
+
+export function useListColor(listImageUri?: string) {
+  const [color, setColor] = useState('#2172E5')
+
+  useLayoutEffect(() => {
+    let stale = false
+
+    if (listImageUri) {
+      getColorFromUriPath(listImageUri).then((color) => {
+        if (!stale && color !== null) {
+          setColor(color)
+        }
+      })
+    }
+
+    return () => {
+      stale = true
+      setColor('#2172E5')
+    }
+  }, [listImageUri])
 
   return color
 }

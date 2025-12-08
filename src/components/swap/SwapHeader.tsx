@@ -1,32 +1,30 @@
-import { Trans } from '@lingui/macro'
+import React from 'react'
+import styled from 'styled-components/macro'
+import SettingsTab from '../Settings'
 import { Percent } from '@uniswap/sdk-core'
-import styled from 'styled-components'
-import { ThemedText } from 'theme/components'
 
 import { RowBetween, RowFixed } from '../Row'
-import SettingsTab from '../Settings'
+import { TYPE } from '../../theme'
 
-const StyledSwapHeader = styled(RowBetween)`
-  margin-bottom: 10px;
-  color: ${({ theme }) => theme.neutral2};
+const StyledSwapHeader = styled.div`
+  padding: 1rem 1.25rem 0.5rem 1.25rem;
+  width: 100%;
+  color: ${({ theme }) => theme.text2};
 `
 
-const HeaderButtonContainer = styled(RowFixed)`
-  padding: 0 12px;
-  gap: 16px;
-`
-
-export default function SwapHeader({ autoSlippage, chainId }: { autoSlippage: Percent; chainId?: number }) {
+export default function SwapHeader({ allowedSlippage }: { allowedSlippage: Percent }) {
   return (
     <StyledSwapHeader>
-      <HeaderButtonContainer>
-        <ThemedText.SubHeader>
-          <Trans>Swap</Trans>
-        </ThemedText.SubHeader>
-      </HeaderButtonContainer>
-      <RowFixed>
-        <SettingsTab autoSlippage={autoSlippage} chainId={chainId} />
-      </RowFixed>
+      <RowBetween>
+        <RowFixed>
+          <TYPE.black fontWeight={500} fontSize={16} style={{ marginRight: '8px' }}>
+            Swap{' '}
+          </TYPE.black>
+        </RowFixed>
+        <RowFixed>
+          <SettingsTab placeholderSlippage={allowedSlippage} />
+        </RowFixed>
+      </RowBetween>
     </StyledSwapHeader>
   )
 }
